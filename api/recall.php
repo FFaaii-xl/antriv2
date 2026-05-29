@@ -12,39 +12,32 @@ $loket = $loket && $loket > 0 ? $loket : 1;
 
 try {
     $pdo = antrian_db();
-    // Begin an immediate write-lock transaction to block simultaneous reads and updates
     $pdo->exec('BEGIN IMMEDIATE TRANSACTION');
 
-    $statement = $pdo->query('SELECT antrian FROM state WHERE id = 1');
-    $current = $statement ? $statement->fetchColumn() : 0;
-    $nextNumber = ((int) $current) + 1;
+    // Fetch the last called queue number for this specific loket
+    $statement = $pdo->prepare('SELECT antrian FROM loket_last_call WHERE loket = :loket');
+    $statement->execute(['loket' => $loket]);
+    $lastCalled = $statement->fetchColumn();
 
-    $pdo->prepare('UPDATE state SET antrian = :antrian, loket = :loket, panggil = 1 WHERE id = 1')
-        ->execute([
-            'antrian' => $nextNumber,
-            'loket' => $loket,
-        ]);
+    $lastCalledNumber = $lastCalled !== false ? (int) $lastCalled : 0;
 
-    $pdo->prepare(
-        'INSERT INTO loket_last_call (loket, antrian, updated_at)
-         VALUES (:loket, :antrian, :updated_at)
-         ON CONFLICT(loket) DO UPDATE SET
-             antrian = excluded.antrian,
-             updated_at = excluded.updated_at'
-    )->execute([
-        'loket' => $loket,
-        'antrian' => $nextNumber,
-        'updated_at' => date('Y-m-d H:i:s'),
-    ]);
+    if ($lastCalledNumber > 0) {
+        // Set global state to this number and trigger voice announcement
+        $pdo->prepare('UPDATE state SET antrian = :antrian, loket = :loket, panggil = 1 WHERE id = 1')
+            ->execute([
+                'antrian' => $lastCalledNumber,
+                'loket' => $loket,
+            ]);
+    }
 
     $pdo->exec('COMMIT');
     $settings = antrian_app_settings();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Antrian berhasil dipanggil.',
+        'message' => 'Antrian berhasil dipanggil ulang.',
         'data' => [
-            'antrian' => $nextNumber,
+            'antrian' => $lastCalledNumber,
             'loket' => $loket,
             'panggil' => 1,
             'settings' => [

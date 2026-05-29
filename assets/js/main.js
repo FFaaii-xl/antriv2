@@ -130,9 +130,7 @@
 
         const token = activeAnnouncementToken;
         const introAudio = String(settings.intro_audio_file || '').trim();
-        const outroAudio = String(settings.outro_audio_file || '').trim();
-        const introFallback = 'Airport_Bell.mp3';
-        const outroFallback = 'Airport_Bell.mp3';
+        const introFallback = 'in.wav';
 
         const steps = [
             async () => playAudioClip(introAudio || introFallback, token),
@@ -144,7 +142,7 @@
                     }
 
                     await playAudioClip(segment, token);
-                    await wait(120);
+                    await wait(0);
                 }
 
                 return true;
@@ -157,12 +155,11 @@
                     }
 
                     await playAudioClip(segment, token);
-                    await wait(120);
+                    await wait(0);
                 }
 
                 return true;
             },
-            async () => playAudioClip(outroAudio || outroFallback, token),
         ];
 
         for (const step of steps) {
@@ -171,7 +168,7 @@
             }
 
             await step();
-            await wait(120);
+            await wait(0);
         }
 
         return true;
@@ -195,38 +192,84 @@
         return data;
     }
 
-    function speakQueue(queue, loket) {
-        playQueueAnnouncement(queue, loket);
+    const announcementQueue = [];
+    let isAnnouncementPlaying = false;
+
+    async function processAnnouncementQueue() {
+        if (isAnnouncementPlaying || announcementQueue.length === 0) {
+            return;
+        }
+
+        isAnnouncementPlaying = true;
+        const nextAnn = announcementQueue.shift();
+
+        try {
+            await playQueueAnnouncement(nextAnn.queue, nextAnn.loket, nextAnn.settings);
+        } catch (err) {
+            console.error('Panggilan audio terganggu/gagal:', err);
+        } finally {
+            isAnnouncementPlaying = false;
+            // Delay 300ms between announcements for natural transition
+            window.setTimeout(processAnnouncementQueue, 300);
+        }
+    }
+
+    function queueAnnouncement(queue, loket, settings) {
+        const isDuplicate = announcementQueue.some(item => item.queue === queue && item.loket === loket);
+        if (!isDuplicate) {
+            announcementQueue.push({ queue, loket, settings });
+            processAnnouncementQueue();
+        }
+    }
+
+    function speakQueue(queue, loket, settings = {}) {
+        queueAnnouncement(queue, loket, settings);
     }
 
     function initDisplayMode() {
         const statusUrl = body.dataset.statusUrl;
         const queueElement = document.getElementById('queueNumber');
-        const loketElement = document.getElementById('queueLoket');
-        const speechElement = document.getElementById('speechStatus');
+        const logList = document.getElementById('activityLog');
         const loketBoard = document.getElementById('loketBoard');
 
-        function renderLoketBoard(loketCalls) {
+        function renderLoketBoard(loketCalls, settings, activeLoketId) {
             if (!loketBoard) {
                 return;
             }
 
+            const cols = settings?.display_cols || 4;
+            const rows = settings?.display_rows || 2;
+            const limit = cols * rows;
+
+            loketBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
             const items = Array.isArray(loketCalls) && loketCalls.length > 0
-                ? loketCalls
-                : Array.from({ length: 8 }, (_, index) => ({ loket: index + 1, antrian: 0, updated_at: '' }));
+                ? loketCalls.slice(0, limit)
+                : Array.from({ length: limit }, (_, index) => ({ loket: index + 1, antrian: 0, updated_at: '' }));
 
             loketBoard.innerHTML = items.map((item) => {
                 const queueText = padQueue(item.antrian);
-                const lastSeen = item.updated_at ? new Date(item.updated_at.replace(' ', 'T')).toLocaleString('id-ID') : 'Belum ada panggilan';
+                const hasAlias = item.alias && item.alias !== `loket-${String(item.loket).padStart(3, '0')}` && item.alias !== `Loket ${item.loket}`;
+                
+                const isJustCalled = activeLoketId && item.loket === activeLoketId && item.antrian > 0;
+
+                const avatarHtml = item.background_url 
+                    ? `<div class="avatar-container" style="position: absolute; top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1.5px solid var(--accent); box-shadow: 0 4px 8px rgba(124, 58, 237, 0.08); transition: transform 0.3s ease;"><img src="${item.background_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Photo Profil"></div>`
+                    : `<div class="avatar-container" style="position: absolute; top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 999px; background: rgba(124, 58, 237, 0.05); border: 1.5px dashed rgba(124, 58, 237, 0.16); display: flex; align-items: center; justify-content: center;"><i data-lucide="user" class="text-primary" style="width: 18px; height: 18px; stroke-width: 2.2px;"></i></div>`;
 
                 return `
-                    <article class="loket-card loket-card-centered ${item.antrian > 0 ? 'loket-card-active' : ''}">
-                        <span class="loket-card-badge">Loket ${item.loket}</span>
-                        <strong>${queueText}</strong>
-                        <small>${lastSeen}</small>
+                    <article class="loket-card loket-card-centered ${isJustCalled ? 'loket-card-highlight' : (item.antrian > 0 ? 'loket-card-active' : '')}" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; min-height: 168px; gap: 14px; border-radius: 24px;">
+                        ${avatarHtml}
+                        <span class="loket-card-badge" style="margin: 0; font-size: 0.8rem; padding: 4px 14px; min-width: 90px; border-radius: 999px;">Loket ${item.loket}</span>
+                        ${hasAlias ? `<span style="font-size: 0.86rem; color: var(--muted); font-weight: 600; margin-top: -2px; margin-bottom: 2px;">${item.alias}</span>` : ''}
+                        <strong style="font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 850; color: var(--text); line-height: 1; margin: 0; letter-spacing: 0.04em;">${queueText}</strong>
                     </article>
                 `;
             }).join('');
+
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
         }
 
         async function refreshDisplay() {
@@ -234,30 +277,50 @@
                 const payload = await fetchJson(statusUrl);
                 const state = payload.data;
                 const queueText = padQueue(state.antrian);
-                const loketText = state.loket > 0 ? `Loket ${state.loket}` : '-';
+
+                const hasStateAlias = state.loket_alias && state.loket_alias !== `loket-${String(state.loket).padStart(3, '0')}` && state.loket_alias !== `Loket ${state.loket}`;
+                const loketText = state.loket > 0 ? `Loket ${state.loket}${hasStateAlias ? ` (${state.loket_alias})` : ''}` : '-';
 
                 if (queueElement) {
                     queueElement.textContent = queueText;
                 }
 
-                if (loketElement) {
-                    loketElement.textContent = loketText;
+                renderLoketBoard(state.loket_calls, state.settings, state.loket);
+
+                if (state.announce && state.antrian > 0 && state.loket > 0) {
+                    speakQueue(state.antrian, state.loket, state.settings);
                 }
 
-                renderLoketBoard(state.loket_calls);
+                if (logList) {
+                    const sortedCalls = [...(state.loket_calls || [])]
+                        .filter(call => call.antrian > 0)
+                        .sort((a, b) => new Date(b.updated_at.replace(' ', 'T')).getTime() - new Date(a.updated_at.replace(' ', 'T')).getTime())
+                        .slice(0, 2);
 
-                if (speechElement) {
-                    speechElement.textContent = 'Menunggu panggilan dari loket';
+                    if (sortedCalls.length > 0) {
+                        logList.innerHTML = sortedCalls.map(call => {
+                            const hasCallAlias = call.alias && call.alias !== `loket-${String(call.loket).padStart(3, '0')}` && call.alias !== `Loket ${call.loket}`;
+                            const destination = `Loket ${call.loket}${hasCallAlias ? ` (${call.alias})` : ''}`;
+
+                            return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: center; align-items: center; gap: 6px; margin: 2px 0;">
+                                <i data-lucide="dot" class="text-primary" style="width: 16px; height: 16px; stroke-width: 4px; margin-right: -4px;"></i>
+                                <span>Antrian <strong style="color: var(--accent-strong); font-weight: 800;">${padQueue(call.antrian)}</strong> ke <strong>${destination}</strong></span>
+                            </li>`;
+                        }).join('');
+                        lucide.createIcons();
+                    } else {
+                        logList.innerHTML = '<li><span style="color: var(--muted); font-size: 0.82rem;">Belum ada panggilan</span></li>';
+                    }
                 }
             } catch (error) {
-                if (speechElement) {
-                    speechElement.textContent = error.message;
+                if (logList) {
+                    logList.innerHTML = `<li><span style="color: var(--danger);">${error.message}</span></li>`;
                 }
             }
         }
 
         refreshDisplay();
-        setInterval(refreshDisplay, 1000);
+        setInterval(refreshDisplay, 500);
     }
 
     function initAdminMode() {
@@ -316,7 +379,7 @@
         }
 
         refreshAdmin();
-        setInterval(refreshAdmin, 1000);
+        setInterval(refreshAdmin, 500);
     }
 
     function initLoketMode() {
@@ -325,13 +388,24 @@
         const nextButton = document.getElementById('nextButton');
         const loketActive = document.getElementById('loketActive');
         const loketMessage = document.getElementById('loketMessage');
+        const saveAliasButton = document.getElementById('saveAliasButton');
+        const loketAliasInput = document.getElementById('loketAliasInput');
+
+        const recallButton = document.getElementById('recallButton');
+        const currentQueueNumber = document.getElementById('currentQueueNumber');
 
         function syncLoketLabel() {
             if (!loketSelect || !loketActive) {
                 return;
             }
 
-            loketActive.textContent = `Loket ${loketSelect.value}`;
+            const activeOptionText = loketSelect.options[loketSelect.selectedIndex]?.text || `Loket ${loketSelect.value}`;
+            loketActive.textContent = activeOptionText;
+            
+            const loketTitle = document.getElementById('loketTitle');
+            if (loketTitle) {
+                loketTitle.textContent = activeOptionText;
+            }
         }
 
         async function callNext() {
@@ -352,14 +426,10 @@
                 if (loketMessage) {
                     loketMessage.textContent = `Antrian ${padQueue(payload.data.antrian)} berhasil dipanggil dari loket ${payload.data.loket}.`;
                 }
+                if (currentQueueNumber) {
+                    currentQueueNumber.textContent = padQueue(payload.data.antrian);
+                }
                 syncLoketLabel();
-                if (loketMessage) {
-                    loketMessage.textContent = `Membacakan antrian ${padQueue(payload.data.antrian)} menuju loket ${payload.data.loket}...`;
-                }
-                await playQueueAnnouncement(payload.data.antrian, payload.data.loket, payload.data.settings || {});
-                if (loketMessage) {
-                    loketMessage.textContent = `Antrian ${padQueue(payload.data.antrian)} berhasil dipanggil dari loket ${payload.data.loket}.`;
-                }
             } catch (error) {
                 if (loketMessage) {
                     loketMessage.textContent = error.message;
@@ -369,13 +439,130 @@
             }
         }
 
+        async function callRecall() {
+            if (!loketSelect || !recallButton) {
+                return;
+            }
+
+            const loket = loketSelect.value;
+            const url = `/api/recall.php?loket=${encodeURIComponent(loket)}`;
+
+            recallButton.disabled = true;
+            const originalContent = recallButton.innerHTML;
+            recallButton.innerHTML = '<i class="spinner-border spinner-border-sm" style="width: 1rem; height: 1rem; margin-right: 6px;"></i> Memproses...';
+            if (loketMessage) {
+                loketMessage.textContent = 'Memproses panggilan ulang...';
+            }
+
+            try {
+                const payload = await fetchJson(url, { method: 'POST' });
+                if (loketMessage) {
+                    if (payload.data.antrian > 0) {
+                        loketMessage.textContent = `Antrian ${padQueue(payload.data.antrian)} dipanggil ulang dari loket ${payload.data.loket}.`;
+                        if (currentQueueNumber) {
+                            currentQueueNumber.textContent = padQueue(payload.data.antrian);
+                        }
+                    } else {
+                        loketMessage.textContent = 'Belum ada antrian yang dipanggil di loket ini.';
+                    }
+                }
+            } catch (error) {
+                if (loketMessage) {
+                    loketMessage.textContent = error.message;
+                }
+            } finally {
+                recallButton.disabled = false;
+                recallButton.innerHTML = originalContent;
+                if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                    lucide.createIcons();
+                }
+            }
+        }
+
+        async function refreshLoketStatus() {
+            try {
+                const payload = await fetchJson('/api/status.php?peek=true');
+                const state = payload.data;
+                if (currentQueueNumber) {
+                    currentQueueNumber.textContent = padQueue(state.antrian);
+                }
+            } catch (error) {
+                console.error('Gagal memperbarui status loket:', error);
+            }
+        }
+
         if (loketSelect) {
-            loketSelect.addEventListener('change', syncLoketLabel);
+            loketSelect.addEventListener('change', () => {
+                window.location.href = `/loket&loket=${loketSelect.value}`;
+            });
             syncLoketLabel();
         }
 
         if (nextButton) {
             nextButton.addEventListener('click', callNext);
+        }
+
+        if (recallButton) {
+            recallButton.addEventListener('click', callRecall);
+        }
+
+        refreshLoketStatus();
+        setInterval(refreshLoketStatus, 500);
+
+        if (saveAliasButton && loketAliasInput) {
+            saveAliasButton.addEventListener('click', async () => {
+                const aliasValue = loketAliasInput.value.trim();
+                if (!aliasValue) {
+                    alert('Nama alias tidak boleh kosong.');
+                    return;
+                }
+
+                saveAliasButton.disabled = true;
+                const originalText = saveAliasButton.textContent;
+                saveAliasButton.textContent = 'Menyimpan...';
+
+                try {
+                    const payload = await fetchJson('/api/update_loket_alias.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            loket: body.dataset.loket,
+                            alias: aliasValue
+                        })
+                    });
+
+                    if (loketSelect) {
+                        const activeOption = loketSelect.querySelector(`option[value="${body.dataset.loket}"]`);
+                        if (activeOption) {
+                            activeOption.textContent = `Loket ${body.dataset.loket} (${aliasValue})`;
+                        }
+                    }
+
+                    if (loketActive) {
+                        loketActive.textContent = `Loket ${body.dataset.loket} (${aliasValue})`;
+                    }
+
+                    const loketTitle = document.getElementById('loketTitle');
+                    const loketTitleAlias = document.getElementById('loketTitleAlias');
+                    if (loketTitleAlias) {
+                        loketTitleAlias.textContent = `(${aliasValue})`;
+                        loketTitleAlias.style.display = 'block';
+                    } else if (loketTitle) {
+                        loketTitle.innerHTML = `Loket ${body.dataset.loket} <span id="loketTitleAlias" style="font-size: 1.5rem; color: var(--muted); font-weight: normal; display: block; margin-top: 4px;">(${aliasValue})</span>`;
+                    }
+
+                    document.title = `Antrian SPMB 2026 | Loket ${body.dataset.loket} (${aliasValue})`;
+
+                    alert('Nama alias loket berhasil diperbarui!');
+                } catch (error) {
+                    alert(error.message || 'Gagal memperbarui alias loket.');
+                } finally {
+                    saveAliasButton.disabled = false;
+                    saveAliasButton.textContent = originalText;
+                }
+            });
         }
     }
 

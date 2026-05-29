@@ -24,11 +24,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             antrian_login_user($user);
 
             if ($user['role'] === 'admin') {
-                header('Location: /index.php?page=admin');
+                header('Location: /admin');
                 exit;
             }
 
-            header('Location: /index.php?page=loket&loket=1');
+            header('Location: /loket&loket=1');
             exit;
         }
     }
@@ -73,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="button button-primary">Login</button>
             </form>
 
-            <p class="auth-links">Belum punya akun? <a href="/index.php?page=register">Daftar di sini</a></p>
-            <p class="auth-links"><a href="/index.php">Kembali ke menu</a></p>
+            <p class="auth-links">Belum punya akun? <a href="/register">Daftar di sini</a></p>
+            <p class="auth-links"><a href="/menu">Kembali ke menu</a></p>
         </section>
     </main>
 </body>

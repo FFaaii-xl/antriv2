@@ -38,7 +38,9 @@ function antrian_db(): PDO
             id INTEGER PRIMARY KEY CHECK (id = 1),
             intro_text TEXT NOT NULL,
             outro_text TEXT NOT NULL,
-            queue_start INTEGER NOT NULL DEFAULT 1
+            queue_start INTEGER NOT NULL DEFAULT 1,
+            display_cols INTEGER NOT NULL DEFAULT 4,
+            display_rows INTEGER NOT NULL DEFAULT 2
         )'
     );
 
@@ -142,6 +144,8 @@ function antrian_db(): PDO
     $hasQueueStartColumn = false;
     $hasIntroColumn = false;
     $hasOutroColumn = false;
+    $hasDisplayColsColumn = false;
+    $hasDisplayRowsColumn = false;
 
     foreach ($settingsColumns as $column) {
         $columnName = (string) $column['name'];
@@ -157,6 +161,22 @@ function antrian_db(): PDO
         if ($columnName === 'outro_text') {
             $hasOutroColumn = true;
         }
+
+        if ($columnName === 'display_cols') {
+            $hasDisplayColsColumn = true;
+        }
+
+        if ($columnName === 'display_rows') {
+            $hasDisplayRowsColumn = true;
+        }
+    }
+
+    if (!$hasDisplayColsColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN display_cols INTEGER NOT NULL DEFAULT 4');
+    }
+
+    if (!$hasDisplayRowsColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN display_rows INTEGER NOT NULL DEFAULT 2');
     }
 
     if (!$hasQueueStartColumn || !$hasIntroColumn || !$hasOutroColumn) {

@@ -50,7 +50,7 @@ function antrian_require_role(array $roles): void
     $user = antrian_current_user();
 
     if (!$user || !in_array($user['role'], $roles, true)) {
-        header('Location: /index.php?page=login');
+        header('Location: /login');
         exit;
     }
 }
@@ -256,13 +256,15 @@ function antrian_loket_accounts(): array
 
 function antrian_app_settings(): array
 {
-    $statement = antrian_db()->query('SELECT id, queue_start FROM app_settings WHERE id = 1 LIMIT 1');
+    $statement = antrian_db()->query('SELECT id, queue_start, display_cols, display_rows FROM app_settings WHERE id = 1 LIMIT 1');
     $settings = $statement ? $statement->fetch() : false;
     $audioInfo = antrian_announcement_audio_info();
 
     return array_merge($settings ?: [
         'id' => 1,
         'queue_start' => 1,
+        'display_cols' => 4,
+        'display_rows' => 2,
     ], $audioInfo);
 }
 
@@ -349,6 +351,15 @@ function antrian_update_queue_start(int $queueStart): void
 function antrian_update_app_settings(string $introText, string $outroText, int $queueStart): void
 {
     antrian_update_queue_start($queueStart);
+}
+
+function antrian_update_display_settings(int $cols, int $rows): void
+{
+    $statement = antrian_db()->prepare('UPDATE app_settings SET display_cols = :display_cols, display_rows = :display_rows WHERE id = 1');
+    $statement->execute([
+        'display_cols' => max(1, $cols),
+        'display_rows' => max(1, $rows),
+    ]);
 }
 
 function antrian_update_state_values(int $antrian, ?int $loket = null, ?int $panggil = null): void

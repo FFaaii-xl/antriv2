@@ -27,6 +27,8 @@ try {
         'antrian' => $startQueue - 1,
     ]);
 
+    $pdo->prepare('UPDATE loket_last_call SET antrian = 0')->execute();
+
     echo json_encode([
         'success' => true,
         'message' => 'Antrian berhasil direset.',

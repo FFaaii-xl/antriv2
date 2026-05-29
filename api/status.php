@@ -24,6 +24,45 @@ try {
     $shouldSpeak = (int) $state['panggil'] === 1 && !$peek;
     $loketCalls = $pdo->query('SELECT loket, antrian, updated_at FROM loket_last_call ORDER BY loket ASC')->fetchAll();
 
+    $loketAccounts = antrian_loket_accounts();
+    $aliases = [];
+    foreach ($loketAccounts as $index => $acc) {
+        $loketNum = $index + 1;
+        $aliases[$loketNum] = $acc['alias'] ?: 'Loket ' . $loketNum;
+    }
+
+    $callsMap = [];
+    foreach ($loketCalls as $row) {
+        $callsMap[(int) $row['loket']] = [
+            'antrian' => (int) $row['antrian'],
+            'updated_at' => (string) $row['updated_at'],
+        ];
+    }
+
+    $mappedCalls = [];
+    foreach ($loketAccounts as $index => $acc) {
+        $loketNum = $index + 1;
+        $dbCall = $callsMap[$loketNum] ?? ['antrian' => 0, 'updated_at' => ''];
+        
+        $uid = (int) $acc['id'];
+        $bgFile = __DIR__ . '/../assets/img/backgrounds/loket_uid_' . $uid . '.jpg';
+        // Fallback: check legacy index-based filename for backward compatibility
+        $bgFileLegacy = __DIR__ . '/../assets/img/backgrounds/loket_' . $loketNum . '.jpg';
+        if (!is_file($bgFile) && is_file($bgFileLegacy)) {
+            $bgFile = $bgFileLegacy;
+        }
+        $hasBg = is_file($bgFile);
+        $bgUrl = $hasBg ? ('/assets/img/backgrounds/' . basename($bgFile) . '?v=' . filemtime($bgFile)) : null;
+
+        $mappedCalls[] = [
+            'loket' => $loketNum,
+            'alias' => $aliases[$loketNum],
+            'antrian' => $dbCall['antrian'],
+            'updated_at' => $dbCall['updated_at'],
+            'background_url' => $bgUrl,
+        ];
+    }
+
     if ($shouldSpeak) {
         $pdo->prepare('UPDATE state SET panggil = 0 WHERE id = 1')->execute();
         $pdo->commit();
@@ -40,6 +79,7 @@ try {
             'id' => (int) $state['id'],
             'antrian' => (int) $state['antrian'],
             'loket' => (int) $state['loket'],
+            'loket_alias' => $aliases[(int) $state['loket']] ?? ('Loket ' . $state['loket']),
             'panggil' => (int) $state['panggil'],
             'announce' => (bool) $state['announce'],
             'settings' => [
@@ -50,14 +90,10 @@ try {
                 'outro_audio_url' => (string) $settings['outro_audio_url'],
                 'outro_audio_exists' => (bool) $settings['outro_audio_exists'],
                 'queue_start' => (int) $settings['queue_start'],
+                'display_cols' => (int) ($settings['display_cols'] ?? 4),
+                'display_rows' => (int) ($settings['display_rows'] ?? 2),
             ],
-            'loket_calls' => array_map(static function (array $row): array {
-                return [
-                    'loket' => (int) $row['loket'],
-                    'antrian' => (int) $row['antrian'],
-                    'updated_at' => (string) $row['updated_at'],
-                ];
-            }, $loketCalls),
+            'loket_calls' => $mappedCalls,
         ],
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $throwable) {
