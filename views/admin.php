@@ -27,6 +27,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'Loket baru dibuat: ' . $newLoket['username'] . ' dan slot disesuaikan otomatis.'];
         }
 
+        if ($action === 'update_settings') {
+            $queueStart = filter_input(INPUT_POST, 'queue_start', FILTER_VALIDATE_INT);
+            $currentQueue = filter_input(INPUT_POST, 'current_queue', FILTER_VALIDATE_INT);
+
+            if ($queueStart === false || $queueStart === null) {
+                $queueStart = 1;
+            }
+
+            if ($currentQueue === false || $currentQueue === null) {
+                $currentQueue = 0;
+            }
+
+            antrian_save_uploaded_announcement_audio($_FILES['intro_audio'] ?? [], 'intro.mp3');
+            antrian_save_uploaded_announcement_audio($_FILES['outro_audio'] ?? [], 'outro.mp3');
+            antrian_update_queue_start((int) $queueStart);
+            antrian_update_state_values((int) $currentQueue, null, 0);
+            $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'File intro, outro, dan nomor antrian berhasil disimpan.'];
+        }
+
         if ($action === 'update_user') {
             $userId = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
             $newUsername = trim((string) ($_POST['username'] ?? ''));
@@ -74,6 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $searchQuery = (string) ($_GET['q'] ?? '');
+$settings = antrian_app_settings();
+$state = antrian_state();
 $loketAccounts = antrian_loket_accounts();
 $loketLastCalls = antrian_loket_last_calls();
 $loketRows = [];
@@ -110,7 +131,9 @@ unset($_SESSION['admin_notice']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin Antrian</title>
+    <title>Antrian SPMB 2026 | Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell app-admin" data-role="admin" data-status-url="/api/status.php?peek=1" data-reset-url="/api/reset.php">
@@ -118,8 +141,9 @@ unset($_SESSION['admin_notice']);
         <section class="admin-header">
             <div>
                 <p class="eyebrow">Panel Master</p>
-                <h1>Admin Antrian</h1>
+                <h1>Antrian SPMB 2026</h1>
                 <p class="lead">Pantau status real-time dan reset antrian saat pergantian hari atau buka cabang.</p>
+                <p class="lead mb-0">By SMK N 4 Surakarta</p>
                 <p class="auth-caption">Login: <?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></p>
             </div>
             <div class="action-stack">
@@ -127,6 +151,46 @@ unset($_SESSION['admin_notice']);
                 <a class="button button-ghost" href="/index.php?page=logout">Logout</a>
                 <button class="button button-danger" id="resetButton" type="button">Reset Antrian</button>
             </div>
+        </section>
+
+        <section class="panel-card loket-list-card">
+            <div class="section-headline">
+                <div>
+                    <p class="eyebrow">Pengaturan Panggilan</p>
+                    <h2>Intro, Outro, dan Awal Antrian</h2>
+                </div>
+            </div>
+
+            <form class="announcement-settings" method="post" action="/index.php?page=admin" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="update_settings">
+                <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                <label class="settings-field settings-field-full">
+                    <span>Intro panggilan (MP3)</span>
+                    <input type="file" name="intro_audio" accept="audio/mpeg,audio/mp3,.mp3">
+                    <small class="settings-hint">
+                        <?= $settings['intro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['intro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file intro yang diupload.' ?>
+                    </small>
+                </label>
+                <label class="settings-field settings-field-full">
+                    <span>Outro panggilan (MP3)</span>
+                    <input type="file" name="outro_audio" accept="audio/mpeg,audio/mp3,.mp3">
+                    <small class="settings-hint">
+                        <?= $settings['outro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['outro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file outro yang diupload.' ?>
+                    </small>
+                </label>
+                <label class="settings-field">
+                    <span>Nomor mulai antrian</span>
+                    <input type="number" name="queue_start" min="1" value="<?= (int) $settings['queue_start'] ?>">
+                </label>
+                <label class="settings-field">
+                    <span>Antrian terakhir sekarang</span>
+                    <input type="number" name="current_queue" min="0" value="<?= (int) $state['antrian'] ?>">
+                </label>
+                <div class="settings-actions">
+                    <button class="button button-primary" type="submit">Simpan Pengaturan</button>
+                </div>
+            </form>
+
         </section>
 
         <section class="panel-card loket-list-card">
@@ -182,29 +246,32 @@ unset($_SESSION['admin_notice']);
                                     <td><?= htmlspecialchars($row['antrian_terakhir'], ENT_QUOTES, 'UTF-8') ?></td>
                                     <td>
                                         <?php if ($row['role'] === 'loket'): ?>
-                                            <div class="table-actions">
-                                                <form class="table-action-form" method="post" action="/index.php?page=admin">
-                                                    <input type="hidden" name="action" value="update_user">
-                                                    <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
-                                                    <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
-                                                    <label class="table-inline-field">
-                                                        <span>Nama</span>
-                                                        <input type="text" name="username" value="<?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?>" required>
-                                                    </label>
-                                                    <label class="table-inline-field">
-                                                        <span>Alias</span>
-                                                        <input type="text" name="alias" value="<?= htmlspecialchars($row['alias'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nama tampil">
-                                                    </label>
-                                                    <button class="button button-primary table-action-button" type="submit">Simpan</button>
-                                                </form>
+                                            <details class="row-action-dropdown">
+                                                <summary class="row-action-toggle">Aksi</summary>
+                                                <div class="table-actions">
+                                                    <form class="table-action-form" method="post" action="/index.php?page=admin">
+                                                        <input type="hidden" name="action" value="update_user">
+                                                        <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
+                                                        <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <label class="table-inline-field">
+                                                            <span>Nama</span>
+                                                            <input type="text" name="username" value="<?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?>" required>
+                                                        </label>
+                                                        <label class="table-inline-field">
+                                                            <span>Alias</span>
+                                                            <input type="text" name="alias" value="<?= htmlspecialchars($row['alias'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nama tampil">
+                                                        </label>
+                                                        <button class="button button-primary table-action-button" type="submit">Simpan</button>
+                                                    </form>
 
-                                                <form class="table-action-form" method="post" action="/index.php?page=admin" onsubmit="return confirm('Hapus loket ini?');">
-                                                    <input type="hidden" name="action" value="delete_user">
-                                                    <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
-                                                    <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
-                                                    <button class="button button-danger table-action-button" type="submit">Hapus</button>
-                                                </form>
-                                            </div>
+                                                    <form class="table-action-form" method="post" action="/index.php?page=admin" onsubmit="return confirm('Hapus loket ini?');">
+                                                        <input type="hidden" name="action" value="delete_user">
+                                                        <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
+                                                        <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <button class="button button-danger table-action-button" type="submit">Hapus</button>
+                                                    </form>
+                                                </div>
+                                            </details>
                                         <?php else: ?>
                                             <div class="loket-locked">Akun admin terkunci dari penghapusan dan edit nama via panel ini.</div>
                                         <?php endif; ?>

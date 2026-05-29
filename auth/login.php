@@ -38,14 +38,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Aplikasi Antrian</title>
+    <title>Antrian SPMB 2026 | Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell auth-shell">
     <main class="auth-page">
         <section class="auth-card">
             <p class="eyebrow">Masuk Sistem</p>
-            <h1>Login</h1>
+            <h1>Antrian SPMB 2026</h1>
+            <p class="lead">By SMK N 4 Surakarta</p>
             <p class="lead">Gunakan akun admin untuk panel kontrol atau akun loket untuk akses loket.</p>
 
             <?php if ($errors): ?>

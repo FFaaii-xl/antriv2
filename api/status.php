@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../config/database.php';
+require __DIR__ . '/../auth/helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -42,8 +43,12 @@ try {
             'panggil' => (int) $state['panggil'],
             'announce' => (bool) $state['announce'],
             'settings' => [
-                'intro_text' => (string) $settings['intro_text'],
-                'outro_text' => (string) $settings['outro_text'],
+                'intro_audio_file' => (string) $settings['intro_audio_file'],
+                'intro_audio_url' => (string) $settings['intro_audio_url'],
+                'intro_audio_exists' => (bool) $settings['intro_audio_exists'],
+                'outro_audio_file' => (string) $settings['outro_audio_file'],
+                'outro_audio_url' => (string) $settings['outro_audio_url'],
+                'outro_audio_exists' => (bool) $settings['outro_audio_exists'],
                 'queue_start' => (int) $settings['queue_start'],
             ],
             'loket_calls' => array_map(static function (array $row): array {

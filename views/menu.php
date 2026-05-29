@@ -14,15 +14,32 @@ $currentLoket = (int) $state['loket'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Panggilan Antrian</title>
+    <title>Antrian SPMB 2026 | SMK N 4 Surakarta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell app-home">
     <main class="page page-home">
         <section class="hero-card">
             <p class="eyebrow">Sistem Antrian SQLite</p>
-            <h1>Aplikasi Panggilan Antrian</h1>
-            <p class="lead">Kelola pemanggilan antrian, layar display, dan panel admin dari satu aplikasi ringan berbasis PHP.</p>
+            <h1>Antrian SPMB 2026</h1>
+            <p class="lead">By SMK N 4 Surakarta. Kelola pemanggilan antrian, layar display, dan panel admin dari satu aplikasi ringan berbasis PHP.</p>
+
+            <section class="panel-card mt-4 bg-white border border-1 shadow-sm">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start align-items-lg-center">
+                    <div>
+                        <p class="eyebrow mb-2">Tentang Aplikasi</p>
+                        <h2 class="h4 mb-2">Antrian SPMB 2026</h2>
+                        <p class="lead mb-0">Dirancang untuk display publik, loket tanpa login, dan admin terpusat dengan tampilan yang lebih terang dan mudah dibaca.</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge text-bg-primary px-3 py-2">Real-time</span>
+                        <span class="badge text-bg-success px-3 py-2">Audio MP3</span>
+                        <span class="badge text-bg-warning px-3 py-2">Admin Panel</span>
+                    </div>
+                </div>
+            </section>
 
             <div class="auth-chip-row">
                 <?php if ($currentUser): ?>

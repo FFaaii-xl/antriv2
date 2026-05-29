@@ -51,14 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Akun Antrian</title>
+    <title>Antrian SPMB 2026 | Daftar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell auth-shell">
     <main class="auth-page">
         <section class="auth-card">
             <p class="eyebrow">Buat Akun</p>
-            <h1>Daftar</h1>
+            <h1>Antrian SPMB 2026</h1>
+            <p class="lead">By SMK N 4 Surakarta</p>
             <p class="lead">Buat akun admin atau loket untuk masuk ke panel yang sesuai.</p>
 
             <?php if ($errors): ?>

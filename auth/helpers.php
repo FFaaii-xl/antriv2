@@ -256,31 +256,99 @@ function antrian_loket_accounts(): array
 
 function antrian_app_settings(): array
 {
-    $statement = antrian_db()->query('SELECT id, intro_text, outro_text, queue_start FROM app_settings WHERE id = 1 LIMIT 1');
+    $statement = antrian_db()->query('SELECT id, queue_start FROM app_settings WHERE id = 1 LIMIT 1');
     $settings = $statement ? $statement->fetch() : false;
+    $audioInfo = antrian_announcement_audio_info();
 
-    return $settings ?: [
+    return array_merge($settings ?: [
         'id' => 1,
-        'intro_text' => '',
-        'outro_text' => '',
         'queue_start' => 1,
+    ], $audioInfo);
+}
+
+function antrian_announcement_audio_directory(): string
+{
+    return __DIR__ . '/../audio/custom';
+}
+
+function antrian_announcement_audio_info(): array
+{
+    $directory = antrian_announcement_audio_directory();
+    $introPath = $directory . '/intro.mp3';
+    $outroPath = $directory . '/outro.mp3';
+
+    return [
+        'intro_audio_file' => is_file($introPath) ? 'custom/intro.mp3' : '',
+        'intro_audio_url' => is_file($introPath) ? '/audio/custom/intro.mp3' : '',
+        'intro_audio_exists' => is_file($introPath),
+        'outro_audio_file' => is_file($outroPath) ? 'custom/outro.mp3' : '',
+        'outro_audio_url' => is_file($outroPath) ? '/audio/custom/outro.mp3' : '',
+        'outro_audio_exists' => is_file($outroPath),
     ];
+}
+
+function antrian_save_uploaded_announcement_audio(array $file, string $targetFileName): void
+{
+    if ($file === [] || !isset($file['error'])) {
+        return;
+    }
+
+    if ((int) $file['error'] === UPLOAD_ERR_NO_FILE) {
+        return;
+    }
+
+    if ((int) $file['error'] !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Upload MP3 gagal.');
+    }
+
+    $originalName = (string) ($file['name'] ?? '');
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+    if ($extension !== 'mp3') {
+        throw new RuntimeException('File harus berformat MP3.');
+    }
+
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        throw new RuntimeException('File upload tidak sah.');
+    }
+
+    $mimeType = '';
+
+    if (class_exists('finfo')) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = (string) $finfo->file($tmpName);
+    }
+
+    if ($mimeType !== '' && !in_array($mimeType, ['audio/mpeg', 'audio/mp3', 'application/octet-stream'], true)) {
+        throw new RuntimeException('File harus berupa audio MP3.');
+    }
+
+    $directory = antrian_announcement_audio_directory();
+
+    if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+        throw new RuntimeException('Folder audio custom tidak bisa dibuat.');
+    }
+
+    $targetPath = $directory . '/' . $targetFileName;
+
+    if (!move_uploaded_file($tmpName, $targetPath)) {
+        throw new RuntimeException('File MP3 tidak bisa disimpan.');
+    }
+}
+
+function antrian_update_queue_start(int $queueStart): void
+{
+    $statement = antrian_db()->prepare('UPDATE app_settings SET queue_start = :queue_start WHERE id = 1');
+    $statement->execute([
+        'queue_start' => max(1, $queueStart),
+    ]);
 }
 
 function antrian_update_app_settings(string $introText, string $outroText, int $queueStart): void
 {
-    $statement = antrian_db()->prepare(
-        'UPDATE app_settings
-         SET intro_text = :intro_text,
-             outro_text = :outro_text,
-             queue_start = :queue_start
-         WHERE id = 1'
-    );
-    $statement->execute([
-        'intro_text' => trim($introText),
-        'outro_text' => trim($outroText),
-        'queue_start' => max(1, $queueStart),
-    ]);
+    antrian_update_queue_start($queueStart);
 }
 
 function antrian_update_state_values(int $antrian, ?int $loket = null, ?int $panggil = null): void

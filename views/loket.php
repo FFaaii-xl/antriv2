@@ -13,7 +13,9 @@ $currentQueue = antrian_format_number((int) $state['antrian']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loket <?= $loket ?></title>
+    <title>Antrian SPMB 2026 | Loket <?= $loket ?></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell app-loket" data-role="loket" data-next-base-url="/api/next.php" data-loket="<?= $loket ?>">
@@ -21,6 +23,7 @@ $currentQueue = antrian_format_number((int) $state['antrian']);
         <section class="panel-card loket-header">
             <p class="eyebrow">Loket</p>
             <h1>Loket <?= $loket ?></h1>
+            <p class="lead">Antrian SPMB 2026 · By SMK N 4 Surakarta</p>
             <p class="lead">Tekan tombol di bawah untuk memanggil antrian berikutnya dari link ini. Tidak perlu login.</p>
         </section>
 

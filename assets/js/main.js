@@ -3,7 +3,6 @@
     const audioBasePath = '/audio';
     let activeAnnouncementToken = 0;
     let activeAudioElement = null;
-    let activeSpeechUtterance = null;
 
     function padQueue(value) {
         return String(value ?? 0).padStart(3, '0');
@@ -20,11 +19,6 @@
             activeAudioElement.pause();
             activeAudioElement.currentTime = 0;
             activeAudioElement = null;
-        }
-
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            activeSpeechUtterance = null;
         }
     }
 
@@ -67,42 +61,6 @@
                     resolve(false);
                 });
             }
-        });
-    }
-
-    function speakText(text, token) {
-        return new Promise((resolve) => {
-            const trimmedText = String(text || '').trim();
-
-            if (token !== activeAnnouncementToken) {
-                resolve(false);
-                return;
-            }
-
-            if (!trimmedText || !('speechSynthesis' in window)) {
-                resolve(true);
-                return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(trimmedText);
-            utterance.lang = 'id-ID';
-            utterance.rate = 1;
-            utterance.pitch = 1;
-            utterance.onend = () => {
-                if (activeSpeechUtterance === utterance) {
-                    activeSpeechUtterance = null;
-                }
-                resolve(true);
-            };
-            utterance.onerror = () => {
-                if (activeSpeechUtterance === utterance) {
-                    activeSpeechUtterance = null;
-                }
-                resolve(false);
-            };
-
-            activeSpeechUtterance = utterance;
-            window.speechSynthesis.speak(utterance);
         });
     }
 
@@ -171,11 +129,13 @@
         stopActiveAnnouncement();
 
         const token = activeAnnouncementToken;
-        const introText = String(settings.intro_text || '').trim();
-        const outroText = String(settings.outro_text || '').trim();
+        const introAudio = String(settings.intro_audio_file || '').trim();
+        const outroAudio = String(settings.outro_audio_file || '').trim();
+        const introFallback = 'Airport_Bell.mp3';
+        const outroFallback = 'Airport_Bell.mp3';
 
         const steps = [
-            async () => (introText ? speakText(introText, token) : playAudioClip('Airport_Bell.mp3', token)),
+            async () => playAudioClip(introAudio || introFallback, token),
             async () => playAudioClip('nomor-urut.MP3', token),
             async () => {
                 for (const segment of numberToAudioFiles(queue)) {
@@ -202,7 +162,7 @@
 
                 return true;
             },
-            async () => (outroText ? speakText(outroText, token) : playAudioClip('Airport_Bell.mp3', token)),
+            async () => playAudioClip(outroAudio || outroFallback, token),
         ];
 
         for (const step of steps) {
@@ -260,8 +220,8 @@
                 const lastSeen = item.updated_at ? new Date(item.updated_at.replace(' ', 'T')).toLocaleString('id-ID') : 'Belum ada panggilan';
 
                 return `
-                    <article class="loket-card ${item.antrian > 0 ? 'loket-card-active' : ''}">
-                        <span>Loket ${item.loket}</span>
+                    <article class="loket-card loket-card-centered ${item.antrian > 0 ? 'loket-card-active' : ''}">
+                        <span class="loket-card-badge">Loket ${item.loket}</span>
                         <strong>${queueText}</strong>
                         <small>${lastSeen}</small>
                     </article>
