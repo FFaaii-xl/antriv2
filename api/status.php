@@ -58,7 +58,7 @@ try {
             $bgFile = $bgFileLegacy;
         }
         $hasBg = is_file($bgFile);
-        $bgUrl = $hasBg ? ('/assets/img/backgrounds/' . basename($bgFile) . '?v=' . filemtime($bgFile)) : null;
+        $bgUrl = $hasBg ? (antrian_base_url() . '/assets/img/backgrounds/' . basename($bgFile) . '?v=' . filemtime($bgFile)) : null;
 
         $mappedCalls[] = [
             'loket' => $loketNum,
@@ -113,3 +113,4 @@ try {
         'message' => $throwable->getMessage(),
     ], JSON_UNESCAPED_UNICODE);
 }
+

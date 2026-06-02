@@ -15,15 +15,15 @@ $currentLoket = (int) $state['loket'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | SMK N 4 Surakarta</title>
-    <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <script src="/assets/vendor/lucide/lucide.min.js"></script>
+    <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
+    <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
 </head>
 <body class="app-shell app-home">
     <main class="page page-home" style="max-width: 800px; margin-top: 40px; margin-bottom: 60px;">
         <section class="hero-card" style="position: relative; overflow: hidden; padding: 40px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                <img src="/assets/img/logosmk4.png" alt="Logo SMKN 4 Surakarta" style="width: 36px; height: 36px; object-fit: contain; flex-shrink: 0;">
+                <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo SMKN 4 Surakarta" style="width: 36px; height: 36px; object-fit: contain; flex-shrink: 0;">
                 <span class="eyebrow" style="margin: 0;">Sistem Antrian SQLite</span>
             </div>
             
@@ -56,14 +56,14 @@ $currentLoket = (int) $state['loket'];
                             <strong style="font-size: 0.98rem; margin: 0;"><?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></strong>
                         </div>
                     </div>
-                    <a class="button button-ghost" href="/logout" style="padding: 12px 20px;">
+                    <a class="button button-ghost" href="<?= antrian_base_url() ?>/logout" style="padding: 12px 20px;">
                         <i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Keluar
                     </a>
                 <?php else: ?>
-                    <a class="button button-primary" href="/login" style="padding: 12px 24px;">
+                    <a class="button button-primary" href="<?= antrian_base_url() ?>/login" style="padding: 12px 24px;">
                         <i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Masuk Akun
                     </a>
-                    <a class="button button-ghost" href="/login" style="padding: 12px 20px;">
+                    <a class="button button-ghost" href="<?= antrian_base_url() ?>/login" style="padding: 12px 20px;">
                         <i data-lucide="shield" style="width: 16px; height: 16px;"></i> Akun Admin
                     </a>
                 <?php endif; ?>
@@ -86,7 +86,7 @@ $currentLoket = (int) $state['loket'];
         </section>
 
         <section class="nav-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
-            <a class="nav-card nav-card-primary" href="/layar" style="padding: 24px; border-radius: 20px;">
+            <a class="nav-card nav-card-primary" href="<?= antrian_base_url() ?>/layar" style="padding: 24px; border-radius: 20px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                     <span style="font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.1em; color: var(--accent-strong);">Layar Display</span>
                     <i data-lucide="tv" class="text-primary" style="width: 20px; height: 20px;"></i>
@@ -95,7 +95,7 @@ $currentLoket = (int) $state['loket'];
                 <small style="color: var(--muted); font-size: 0.88rem; line-height: 1.45;">Papan publik dengan penyiaran audio & rekap data real-time.</small>
             </a>
 
-            <a class="nav-card" href="/admin" style="padding: 24px; border-radius: 20px;">
+            <a class="nav-card" href="<?= antrian_base_url() ?>/admin" style="padding: 24px; border-radius: 20px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                     <span style="font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.1em; color: var(--muted);">Panel Kontrol</span>
                     <i data-lucide="sliders" class="text-muted" style="width: 20px; height: 20px;"></i>
@@ -127,3 +127,5 @@ $currentLoket = (int) $state['loket'];
     </script>
 </body>
 </html>
+
+

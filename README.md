@@ -51,6 +51,28 @@ php -S localhost:8000
 
 4. Buka browser ke `http://localhost:8000/`.
 
+## Mengakses Antrean via HP / Jaringan Lokal (Universal)
+
+Agar HP atau perangkat loket lain di jaringan WiFi/LAN yang sama dapat mengakses aplikasi ini, tidak perlu konfigurasi rumit (vhost). Gunakan salah satu metode universal berikut:
+
+### Opsi 1: Menggunakan PHP Built-in Server (Paling Gampang & Cepat)
+Ini sangat cocok jika Anda hanya butuh menjalankan aplikasi sementara secara instan.
+1. Buka terminal di folder project `antriv2`.
+2. Jalankan perintah ini agar server mendengarkan di semua IP lokal:
+   ```bash
+   php -S 0.0.0.0:8000
+   ```
+3. Di komputer server, buka Admin. URL pada tabel **Daftar Loket** akan otomatis berubah menampilkan IP lokal yang benar (misalnya `http://192.168.1.5:8000/loket?loket=1`).
+4. Pastikan **Windows Firewall** Anda mengizinkan koneksi port `8000`.
+
+### Opsi 2: Menggunakan XAMPP / Laragon (Production Lokal)
+Jika Anda menggunakan web server seperti XAMPP atau Laragon:
+1. Pastikan folder `antriv2` ditempatkan langsung di dalam folder root (misalnya `C:\xampp\htdocs\antriv2` atau `C:\laragon\www\antriv2`).
+2. Jangan menggunakan virtual host (misal `antriv2.test`) untuk perangkat lain. Perangkat lain di LAN tidak mengenali alamat `.test` tersebut.
+3. Di halaman Admin, tabel **Daftar Loket** akan otomatis menyesuaikan URL berdasarkan letak folder (misalnya `http://192.168.1.5/antriv2/loket?loket=1`).
+4. Bagikan URL yang tertera di tabel tersebut kepada petugas loket.
+5. Jika HP menampilkan "Site can't be reached", pastikan **Windows Firewall** Anda telah mengizinkan koneksi *inbound* untuk **Apache HTTP** (port 80).
+
 ## Langkah untuk Orang Awam
 
 Kalau Anda baru pertama kali pasang, ikuti urutan ini saja:

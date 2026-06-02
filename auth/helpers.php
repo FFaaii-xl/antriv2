@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
+function antrian_base_url(): string
+{
+    static $baseUrl = null;
+    if ($baseUrl !== null) {
+        return $baseUrl;
+    }
+    $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '\\/');
+    // Correct base path if the current script is inside known subdirectories
+    if (preg_match('#/(api|auth|views)$#i', str_replace('\\', '/', $basePath))) {
+        $basePath = dirname($basePath);
+        if ($basePath === '\\') $basePath = '/';
+    }
+    $basePath = rtrim($basePath, '\\/');
+    if ($basePath === '/' || $basePath === '\\') {
+        $basePath = '';
+    }
+    $baseUrl = $basePath;
+    return $baseUrl;
+}
+
 function antrian_session_bootstrap(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -96,7 +116,7 @@ function antrian_require_role(array $roles): void
     $user = antrian_current_user();
 
     if (!$user || !in_array($user['role'], $roles, true)) {
-        header('Location: /login');
+        header('Location: ' . antrian_base_url() . '/login');
         exit;
     }
 }

@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin_notice'] = ['type' => 'error', 'message' => $throwable->getMessage()];
     }
 
-    header('Location: /admin' . $redirectQuery);
+    header('Location: ' . antrian_base_url() . '/admin' . $redirectQuery);
     exit;
 }
 
@@ -188,6 +188,45 @@ foreach ($loketLastCalls as $lastCall) {
     $loketLastCallsByLoket[(int) $lastCall['loket']] = $lastCall;
 }
 $loketRows = [];
+// Detect the real LAN IP (skip virtual adapters like WSL 172.x)
+$serverIp = '';
+$fallbackIp = '';
+$hostName = gethostname();
+$ipList = gethostbynamel($hostName) ?: [];
+foreach ($ipList as $ip) {
+    if (str_starts_with($ip, '127.')) continue;
+    if ($fallbackIp === '') $fallbackIp = $ip;
+    // Prefer 192.168.x.x or 10.x.x.x over 172.16-31.x.x (often virtual)
+    $parts = explode('.', $ip);
+    $isVirtual = ((int)$parts[0] === 172 && (int)$parts[1] >= 16 && (int)$parts[1] <= 31);
+    if (!$isVirtual) {
+        $serverIp = $ip;
+        break;
+    }
+}
+if ($serverIp === '') {
+    $serverIp = $fallbackIp ?: ($_SERVER['SERVER_ADDR'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
+}
+
+// Get the base path if the app is hosted in a subdirectory (e.g. XAMPP htdocs/antriv2)
+$basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '\\/');
+if ($basePath === '/' || $basePath === '\\') {
+    $basePath = '';
+}
+
+// If accessed via virtual host (basePath is empty) but we want the IP URL to work across LAN,
+// we append the project folder name (assuming it's in htdocs/www). 
+// We skip this if using the PHP built-in CLI server where the root is the folder itself.
+if ($basePath === '' && php_sapi_name() !== 'cli-server') {
+    $projectName = basename(dirname(__DIR__));
+    $basePath = '/' . $projectName;
+}
+
+// Always use http for local network (no valid SSL cert on raw IP)
+$scheme = "http";
+$port = $_SERVER['SERVER_PORT'] ?? '80';
+$portSuffix = ($port != '80' && $port != '443' && !str_contains((string)$serverIp, ':')) ? ':' . $port : '';
+$baseUrl = $scheme . "://" . $serverIp . $portSuffix . $basePath;
 
 foreach ($loketAccounts as $loketAccount) {
     $loketNumber = (int) ($loketAccount['loket_number'] ?? 0);
@@ -197,7 +236,7 @@ foreach ($loketAccounts as $loketAccount) {
         'no' => $loketNumber,
         'nama' => $loketAccount['username'],
         'alias' => $loketAccount['alias'] ?: antrian_generate_loket_alias($loketNumber),
-        'url' => '/loket?loket=' . $loketNumber,
+        'url' => $baseUrl . '/loket?loket=' . $loketNumber,
         'antrian_terakhir' => antrian_format_number((int) $lastCall['antrian']),
         'role' => $loketAccount['role'],
         'id' => (int) $loketAccount['id'],
@@ -222,105 +261,243 @@ unset($_SESSION['admin_notice']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Admin</title>
-        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
+    <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
+    <style>
+        body.app-admin {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #fdfaff 0%, #f4f0fa 100%);
+        }
+        .admin-navbar {
+            padding: 16px 24px;
+            background: #ffffff;
+            border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.03);
+            flex-shrink: 0;
+        }
+        .admin-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 20px;
+            padding: 20px;
+        }
+        .admin-sidebar {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .admin-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid rgba(124, 58, 237, 0.08);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.03);
+            overflow: hidden;
+        }
+        .panel-card-premium {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid rgba(124, 58, 237, 0.08);
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+        .table-wrap-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 24px 24px 24px;
+        }
+        .table-header-sticky {
+            padding: 24px 24px 16px 24px;
+            border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+            background: #ffffff;
+            z-index: 10;
+        }
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background: #ffffff;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 500px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(124, 58, 237, 0.25);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            position: absolute;
+            top: 24px;
+            right: 24px;
+        }
+        .modal-close:hover {
+            color: var(--danger);
+        }
+    </style>
 </head>
-<body class="app-shell app-admin" data-role="admin" data-status-url="/api/status.php?peek=1" data-reset-url="/api/reset.php" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <main class="page page-admin">
-        <section class="admin-header">
+<body class="app-shell app-admin" data-role="admin" data-status-url="<?= antrian_base_url() ?>/api/status.php?peek=1" data-reset-url="<?= antrian_base_url() ?>/api/reset.php" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+    
+    <nav class="admin-navbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo" style="width: 36px; height: 36px;">
             <div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    <img src="/assets/img/logosmk4.png" alt="Logo SMKN 4 Surakarta" style="width: 40px; height: 40px; object-fit: contain; flex-shrink: 0;">
-                    <p class="eyebrow" style="margin: 0;">Panel Master</p>
-                </div>
-                <h1>Antrian SPMB 2026</h1>
-                <p class="lead">Pantau status real-time dan reset antrian saat pergantian hari atau buka cabang.</p>
-                <p class="lead mb-0">By SMK N 4 Surakarta</p>
-                <p class="auth-caption">Login: <?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></p>
+                <h1 style="font-size: 1.2rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Antrian SPMB 2026</h1>
+                <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">Panel Admin &bull; <?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></p>
             </div>
-            <div class="action-stack">
-                <a class="button button-ghost" href="/menu">Menu</a>
-                <a class="button button-ghost" href="/logout">Logout</a>
-                <button class="button button-danger" id="resetButton" type="button">Reset Antrian</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a class="button button-ghost" href="<?= antrian_base_url() ?>/layar" target="_blank" style="padding: 10px 16px; border-radius: 12px;">
+                <i data-lucide="monitor" style="width: 16px; height: 16px;"></i> Buka Layar
+            </a>
+            <button class="button button-ghost" id="openSettingsBtn" style="padding: 10px 16px; border-radius: 12px;">
+                <i data-lucide="settings" style="width: 16px; height: 16px;"></i> Pengaturan
+            </button>
+
+            <a class="button button-ghost text-danger" href="<?= antrian_base_url() ?>/logout" style="padding: 10px 16px; border-radius: 12px;">
+                <i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="admin-layout">
+        <div class="admin-sidebar">
+            <div class="panel-card-premium" style="gap: 16px;">
+                <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="activity" class="text-primary" style="width: 18px; height: 18px;"></i> Status Sistem
+                </h2>
+                <div style="background: rgba(124, 58, 237, 0.04); padding: 16px; border-radius: 16px; border: 1px solid rgba(124, 58, 237, 0.08);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="font-size: 0.9rem; color: var(--muted);">Antrian Berjalan</span>
+                        <strong id="adminQueue" style="font-size: 1.1rem; color: var(--accent-strong);">000</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="font-size: 0.9rem; color: var(--muted);">Total Loket</span>
+                        <strong id="adminLoket" style="font-size: 1.1rem; color: var(--text);">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="font-size: 0.9rem; color: var(--muted);">Panggilan</span>
+                        <strong id="adminPanggil" style="font-size: 1.1rem; color: var(--text);">0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-size: 0.9rem; color: var(--muted);">Loket Terakhir</span>
+                        <strong id="adminLoketTerakhir" style="font-size: 1.1rem; color: var(--accent-strong);">-</strong>
+                    </div>
+                </div>
+                <p id="adminMessage" style="font-size: 0.85rem; color: var(--muted); margin: 0; text-align: center;">Menunggu pembaruan status.</p>
+                
+                <button class="button button-danger" id="resetButtonWithConfirm" type="button" style="width: 100%; border-radius: 14px; margin-top: 8px; padding: 14px;">
+                    <i data-lucide="rotate-ccw" style="width: 16px; height: 16px; margin-right: 6px;"></i> Reset Antrian
+                </button>
             </div>
-        </section>
+            
+            <?php if ($notice): ?>
+                <div style="padding: 16px; border-radius: 16px; background: <?= $notice['type'] === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)' ?>; color: <?= $notice['type'] === 'error' ? 'var(--danger)' : '#166534' ?>; font-size: 0.9rem;">
+                    <?= htmlspecialchars($notice['message'], ENT_QUOTES, 'UTF-8') ?>
+                </div>
+            <?php endif; ?>
 
-        <section class="panel-card loket-list-card">
-            <div class="section-headline">
-                <div>
-                    <p class="eyebrow">Pengaturan Panggilan</p>
-                    <h2>Intro, Outro, dan Awal Antrian</h2>
+            <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
+                <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="info" class="text-primary" style="width: 18px; height: 18px;"></i> Tentang Aplikasi
+                </h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge" style="background: rgba(124, 58, 237, 0.08); color: var(--accent-strong); font-weight: 600; font-size: 0.78rem; padding: 6px 12px; border-radius: 99px;">Real-time</span>
+                    <span class="badge" style="background: rgba(124, 58, 237, 0.08); color: var(--accent-strong); font-weight: 600; font-size: 0.78rem; padding: 6px 12px; border-radius: 99px;">Audio TTS</span>
                 </div>
             </div>
 
-            <form class="announcement-settings" method="post" action="/admin" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="update_settings">
-                <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
-                <?= antrian_csrf_hidden_input() ?>
-                <label class="settings-field settings-field-full">
-                    <span>Intro panggilan (MP3)</span>
-                    <input type="file" name="intro_audio" accept="audio/mpeg,audio/mp3,.mp3">
-                    <small class="settings-hint">
-                        <?= $settings['intro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['intro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file intro yang diupload.' ?>
-                    </small>
-                </label>
-                <label class="settings-field settings-field-full">
-                    <span>Outro panggilan (MP3)</span>
-                    <input type="file" name="outro_audio" accept="audio/mpeg,audio/mp3,.mp3">
-                    <small class="settings-hint">
-                        <?= $settings['outro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['outro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file outro yang diupload.' ?>
-                    </small>
-                </label>
-                <label class="settings-field">
-                    <span>Nomor mulai antrian</span>
-                    <input type="number" name="queue_start" min="1" value="<?= (int) $settings['queue_start'] ?>">
-                </label>
-                <label class="settings-field">
-                    <span>Antrian terakhir sekarang</span>
-                    <input type="number" name="current_queue" min="0" value="<?= (int) $state['antrian'] ?>">
-                </label>
-                <div class="settings-actions">
-                    <button class="button button-primary" type="submit">Simpan Pengaturan</button>
+            <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
+                <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="server" class="text-primary" style="width: 18px; height: 18px;"></i> Info Sistem
+                </h2>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(124, 58, 237, 0.02); border: 1px solid rgba(124, 58, 237, 0.06); border-radius: 12px;">
+                    <i data-lucide="terminal" class="text-muted" style="width: 18px; height: 18px;"></i>
+                    <div>
+                        <span style="font-size: 0.75rem; color: var(--muted); text-transform: uppercase;">Server Lokal</span>
+                        <strong style="font-size: 0.85rem; font-weight: 600; display: block; margin-top: 2px;">php -S localhost:8000</strong>
+                    </div>
                 </div>
-            </form>
-
-        </section>
-
-        <section class="panel-card loket-list-card">
-            <div class="section-headline">
-                <div>
-                    <p class="eyebrow">Daftar Loket</p>
-                    <h2>Link Akses Loket</h2>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(124, 58, 237, 0.02); border: 1px solid rgba(124, 58, 237, 0.06); border-radius: 12px;">
+                    <i data-lucide="database" class="text-muted" style="width: 18px; height: 18px;"></i>
+                    <div>
+                        <span style="font-size: 0.75rem; color: var(--muted); text-transform: uppercase;">Penyimpanan</span>
+                        <strong style="font-size: 0.85rem; font-weight: 600; display: block; margin-top: 2px;">SQLite Database</strong>
+                    </div>
                 </div>
-                <div class="section-actions">
-                    <span class="section-badge"><?= count($loketRows) ?> loket aktif</span>
-                    <form method="post" action="/admin">
+            </div>
+        </div>
+
+        <div class="admin-main">
+            <div class="table-header-sticky">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+                    <div>
+                        <p class="eyebrow" style="margin-bottom: 4px;">Daftar Loket</p>
+                        <h2 style="font-weight: 800; font-size: 1.4rem; margin: 0;">Manajemen Loket & Avatar</h2>
+                    </div>
+                    <form method="post" action="<?= antrian_base_url() ?>/admin">
                         <input type="hidden" name="action" value="create_loket">
                         <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
                         <?= antrian_csrf_hidden_input() ?>
-                        <button class="button button-primary quick-action-button" type="submit">Buat Loket</button>
+                        <button class="button button-primary" type="submit" style="border-radius: 12px;">
+                            <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Tambah Loket
+                        </button>
                     </form>
                 </div>
+                
+                <form class="table-toolbar" method="get" action="<?= antrian_base_url() ?>/admin" style="margin: 0;">
+                    <label class="table-toolbar-search" style="flex: 1;">
+                        <input type="search" name="q" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>" placeholder="Cari nama atau alias..." style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(124, 58, 237, 0.15); background: #fcfcfd;">
+                    </label>
+                    <button class="button button-ghost" type="submit" style="border-radius: 12px;">Cari</button>
+                    <a class="button button-ghost" href="<?= antrian_base_url() ?>/admin" style="border-radius: 12px;">Reset</a>
+                </form>
             </div>
 
-            <form class="table-toolbar" method="get" action="/admin">
-                <label class="table-toolbar-search">
-                    <span>Cari loket</span>
-                    <input type="search" name="q" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>" placeholder="Cari nama atau alias...">
-                </label>
-                <button class="button button-ghost" type="submit">Cari</button>
-                <a class="button button-ghost" href="/admin">Reset</a>
-            </form>
-
-            <div class="table-wrap">
-                <table class="loket-table">
+            <div class="table-wrap-scroll">
+                <table class="loket-table" style="margin-top: 0;">
                     <thead>
                         <tr>
                             <th>No</th>
                             <th>Nama</th>
                             <th>Alias</th>
                             <th>URL</th>
-                            <th>No. antrian terakhir</th>
+                            <th>No. Antrian Terakhir</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -329,20 +506,20 @@ unset($_SESSION['admin_notice']);
                             <?php foreach ($loketRows as $row): ?>
                                 <tr>
                                     <td><?= (int) $row['no'] ?></td>
-                                    <td><?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td style="font-weight: 600;"><?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?></td>
                                     <td><?= htmlspecialchars($row['alias'], ENT_QUOTES, 'UTF-8') ?></td>
                                     <td>
-                                        <a class="loket-url-link" href="<?= htmlspecialchars($row['url'], ENT_QUOTES, 'UTF-8') ?>">
+                                        <a class="loket-url-link" href="<?= htmlspecialchars($row['url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" style="font-family: monospace; background: rgba(124, 58, 237, 0.05); padding: 6px 10px; border-radius: 8px; color: var(--accent); text-decoration: none; word-break: break-all; display: inline-block; font-size: 0.85rem; border: 1px solid rgba(124, 58, 237, 0.1);">
                                             <?= htmlspecialchars($row['url'], ENT_QUOTES, 'UTF-8') ?>
                                         </a>
                                     </td>
-                                    <td><?= htmlspecialchars($row['antrian_terakhir'], ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><span style="background: rgba(124, 58, 237, 0.1); color: var(--accent-strong); padding: 4px 10px; border-radius: 99px; font-weight: 700;"><?= htmlspecialchars($row['antrian_terakhir'], ENT_QUOTES, 'UTF-8') ?></span></td>
                                     <td>
                                         <?php if ($row['role'] === 'loket'): ?>
                                             <details class="row-action-dropdown">
-                                                <summary class="row-action-toggle">Aksi</summary>
+                                                <summary class="row-action-toggle">Edit</summary>
                                                 <div class="table-actions">
-                                                     <form class="table-action-form" method="post" action="/admin" enctype="multipart/form-data">
+                                                     <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" enctype="multipart/form-data">
                                                          <input type="hidden" name="action" value="update_user">
                                                          <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
                                                          <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
@@ -367,7 +544,7 @@ unset($_SESSION['admin_notice']);
                                                          <?php if ($ppFile): ?>
                                                              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(239, 68, 68, 0.04); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.08);">
                                                                  <div style="width: 32px; height: 32px; border-radius: 999px; overflow: hidden; border: 1.5px solid var(--accent); flex-shrink: 0;">
-                                                                     <img src="/assets/img/backgrounds/<?= basename($ppFile) ?>?v=<?= filemtime($ppFile) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                                                     <img src="<?= antrian_base_url() ?>/assets/img/backgrounds/<?= basename($ppFile) ?>?v=<?= filemtime($ppFile) ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                                                  </div>
                                                                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--danger); font-weight: 600; margin: 0; cursor: pointer;">
                                                                      <input type="checkbox" name="delete_profile_picture" value="1" style="accent-color: var(--danger);"> Hapus Foto
@@ -377,7 +554,7 @@ unset($_SESSION['admin_notice']);
                                                          <button class="button button-primary table-action-button" type="submit">Simpan</button>
                                                     </form>
 
-                                                    <form class="table-action-form" method="post" action="/admin" onsubmit="return confirm('Hapus loket ini?');">
+                                                    <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" onsubmit="return confirm('Hapus loket ini secara permanen?');">
                                                         <input type="hidden" name="action" value="delete_user">
                                                         <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
                                                         <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
@@ -387,7 +564,7 @@ unset($_SESSION['admin_notice']);
                                                 </div>
                                             </details>
                                         <?php else: ?>
-                                            <div class="loket-locked">Akun admin terkunci dari penghapusan dan edit nama via panel ini.</div>
+                                            <span style="font-size: 0.85rem; color: var(--muted);">Admin</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -400,29 +577,98 @@ unset($_SESSION['admin_notice']);
                     </tbody>
                 </table>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <section class="metrics-grid">
-            <div class="metric-card">
-                <span>Antrian</span>
-                <strong id="adminQueue">000</strong>
-            </div>
-            <div class="metric-card">
-                <span>Loket</span>
-                <strong id="adminLoket">-</strong>
-            </div>
-            <div class="metric-card">
-                <span>Panggil</span>
-                <strong id="adminPanggil">0</strong>
-            </div>
-        </section>
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content" style="position: relative;">
+            <button class="modal-close" id="closeSettingsBtn"><i data-lucide="x" style="width: 24px; height: 24px;"></i></button>
+            <h2 style="font-weight: 800; margin-bottom: 24px; font-size: 1.4rem;">Pengaturan Panggilan</h2>
+            
+            <form class="announcement-settings" method="post" action="<?= antrian_base_url() ?>/admin" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="update_settings">
+                <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                <?= antrian_csrf_hidden_input() ?>
+                
+                <label class="settings-field settings-field-full" style="margin-bottom: 16px;">
+                    <span style="font-weight: 600;">Intro panggilan (MP3)</span>
+                    <input type="file" name="intro_audio" accept="audio/mpeg,audio/mp3,.mp3" style="margin-top: 8px;">
+                    <small class="settings-hint" style="display: block; margin-top: 4px;">
+                        <?= $settings['intro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['intro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file intro yang diupload.' ?>
+                    </small>
+                </label>
+                
+                <label class="settings-field settings-field-full" style="margin-bottom: 16px;">
+                    <span style="font-weight: 600;">Outro panggilan (MP3)</span>
+                    <input type="file" name="outro_audio" accept="audio/mpeg,audio/mp3,.mp3" style="margin-top: 8px;">
+                    <small class="settings-hint" style="display: block; margin-top: 4px;">
+                        <?= $settings['outro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['outro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file outro yang diupload.' ?>
+                    </small>
+                </label>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+                    <label class="settings-field" style="flex: 1;">
+                        <span style="font-weight: 600;">Nomor mulai antrian</span>
+                        <input type="number" name="queue_start" min="1" value="<?= (int) $settings['queue_start'] ?>" style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid rgba(15,23,42,0.1);">
+                    </label>
+                    <label class="settings-field" style="flex: 1;">
+                        <span style="font-weight: 600;">Antrian terakhir</span>
+                        <input type="number" name="current_queue" min="0" value="<?= (int) $state['antrian'] ?>" style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid rgba(15,23,42,0.1);">
+                    </label>
+                </div>
+                
+                <div class="settings-actions">
+                    <button class="button button-primary" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">Simpan Pengaturan</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        <section class="panel-card admin-log">
-            <h2>Status Sistem</h2>
-            <p id="adminMessage">Menunggu pembaruan status.</p>
-        </section>
-    </main>
+    <script src="<?= antrian_base_url() ?>/assets/js/main.js"></script>
+    <script>
+        lucide.createIcons();
 
-    <script src="/assets/js/main.js"></script>
+        // Modal Logic
+        const settingsModal = document.getElementById('settingsModal');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        openSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('active');
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('active');
+            }
+        });
+
+        // Confirmation for Reset Button
+        const resetButton = document.getElementById('resetButtonWithConfirm');
+        if (resetButton) {
+            resetButton.addEventListener('click', () => {
+                if (confirm('APAKAH ANDA YAKIN INGIN MERESET ANTRIAN?\n\nTindakan ini akan mengembalikan nomor antrian ke pengaturan awal dan menghapus memori pemanggilan loket hari ini.')) {
+                    // Trigger the original reset logic from main.js by clicking the hidden or redirecting
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = document.body.dataset.resetUrl;
+                    const csrf = document.createElement('input');
+                    csrf.type = 'hidden';
+                    csrf.name = 'csrf_token';
+                    csrf.value = document.body.dataset.csrfToken;
+                    form.appendChild(csrf);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
+
+

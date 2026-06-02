@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/helpers.php';
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
 	session_start();
 }
@@ -15,5 +17,5 @@ if (ini_get('session.use_cookies')) {
 
 session_destroy();
 
-header('Location: /login');
+header('Location: ' . antrian_base_url() . '/login');
 exit;

@@ -348,7 +348,7 @@
         const loketElement = document.getElementById('adminLoket');
         const panggilElement = document.getElementById('adminPanggil');
         const messageElement = document.getElementById('adminMessage');
-        const resetButton = document.getElementById('resetButton');
+        const resetButton = document.getElementById('resetButton') || document.getElementById('resetButtonWithConfirm');
 
         async function refreshAdmin() {
             try {
@@ -360,7 +360,8 @@
                 }
 
                 if (loketElement) {
-                    loketElement.textContent = state.loket > 0 ? `Loket ${state.loket}` : '-';
+                    const totalLoket = Array.isArray(state.loket_calls) ? state.loket_calls.length : 0;
+                    loketElement.textContent = totalLoket > 0 ? String(totalLoket) : '-';
                 }
 
                 if (panggilElement) {
@@ -369,6 +370,11 @@
 
                 if (messageElement) {
                     messageElement.textContent = `Antrian ${padQueue(state.antrian)} terakhir dipanggil dari ${state.loket > 0 ? `loket ${state.loket}` : 'belum ada loket'}.`;
+                }
+
+                const loketTerakhirEl = document.getElementById('adminLoketTerakhir');
+                if (loketTerakhirEl) {
+                    loketTerakhirEl.textContent = state.loket > 0 ? `Loket ${state.loket}` : '-';
                 }
             } catch (error) {
                 if (messageElement) {

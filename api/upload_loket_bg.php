@@ -24,12 +24,12 @@ if (!$loketAccount) {
 }
 $uid = (int) $loketAccount['id'];
 
-if (!isset($_FILES['background']) || $_FILES['background']['error'] !== UPLOAD_ERR_OK) {
-    header("Location: /loket?loket={$loket}");
+$file = $_FILES['background'] ?? [];
+if ($file === [] || !isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+    header("Location: " . antrian_base_url() . "/loket?loket={$loket}");
     exit;
 }
 
-$file = $_FILES['background'];
 $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 if (!in_array(strtolower($file['type']), $allowedTypes, true) && !in_array(strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
@@ -100,5 +100,5 @@ try {
     move_uploaded_file($file['tmp_name'], $destination);
 }
 
-header("Location: /loket?loket={$loket}");
+header("Location: " . antrian_base_url() . "/loket?loket={$loket}");
 exit;

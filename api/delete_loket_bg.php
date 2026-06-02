@@ -36,5 +36,5 @@ if (is_file($legacyFile)) {
     unlink($legacyFile);
 }
 
-header("Location: /loket?loket={$loket}");
+header("Location: " . antrian_base_url() . "/loket?loket={$loket}");
 exit;

@@ -11,8 +11,8 @@ antrian_session_bootstrap();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Daftar</title>
-        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+        <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
 </head>
 <body class="app-shell auth-shell">
     <main class="auth-page">
@@ -27,9 +27,11 @@ antrian_session_bootstrap();
                 <p>Pendaftaran mandiri dinonaktifkan.</p>
             </div>
 
-            <a class="button button-primary" href="/login">Ke Login</a>
-            <p class="auth-links"><a href="/menu">Kembali ke menu</a></p>
+            <a class="button button-primary" href="<?= antrian_base_url() ?>/login">Ke Login</a>
+            <p class="auth-links"><a href="<?= antrian_base_url() ?>/layar">&larr; Lihat Layar Publik</a></p>
         </section>
     </main>
 </body>
 </html>
+
+
