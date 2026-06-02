@@ -13,9 +13,10 @@ if (!$loket || $loket <= 0) {
     exit;
 }
 
+antrian_require_csrf();
+
 // Resolve loket number to user ID
-$loketAccounts = antrian_loket_accounts();
-$loketAccount = $loketAccounts[$loket - 1] ?? null;
+$loketAccount = antrian_loket_user_by_number($loket);
 if (!$loketAccount) {
     http_response_code(404);
     echo "Akun loket tidak ditemukan.";
@@ -24,7 +25,7 @@ if (!$loketAccount) {
 $uid = (int) $loketAccount['id'];
 
 if (!isset($_FILES['background']) || $_FILES['background']['error'] !== UPLOAD_ERR_OK) {
-    header("Location: /loket&loket={$loket}");
+    header("Location: /loket?loket={$loket}");
     exit;
 }
 
@@ -99,5 +100,5 @@ try {
     move_uploaded_file($file['tmp_name'], $destination);
 }
 
-header("Location: /loket&loket={$loket}");
+header("Location: /loket?loket={$loket}");
 exit;

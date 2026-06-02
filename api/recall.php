@@ -10,6 +10,17 @@ header('Content-Type: application/json; charset=utf-8');
 $loket = filter_input(INPUT_GET, 'loket', FILTER_VALIDATE_INT);
 $loket = $loket && $loket > 0 ? $loket : 1;
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Metode tidak diperbolehkan.',
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+antrian_require_csrf();
+
 try {
     $pdo = antrian_db();
     $pdo->exec('BEGIN IMMEDIATE TRANSACTION');

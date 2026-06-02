@@ -28,7 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            header('Location: /loket&loket=1');
+            $loketNumber = antrian_loket_number_for_user_id((int) $user['id']) ?? 1;
+
+            header('Location: /loket?loket=' . $loketNumber);
             exit;
         }
     }
@@ -39,8 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell auth-shell">
@@ -73,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="button button-primary">Login</button>
             </form>
 
-            <p class="auth-links">Belum punya akun? <a href="/register">Daftar di sini</a></p>
+            <p class="auth-links">Akun loket dibuat oleh admin. <a href="/menu">Lihat menu</a></p>
             <p class="auth-links"><a href="/menu">Kembali ke menu</a></p>
         </section>
     </main>

@@ -16,6 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+antrian_require_csrf();
+
 $input = json_decode(file_get_contents('php://input'), true);
 $loket = filter_var($input['loket'] ?? $_POST['loket'] ?? null, FILTER_VALIDATE_INT);
 $alias = trim((string) ($input['alias'] ?? $_POST['alias'] ?? ''));
@@ -39,8 +41,8 @@ if ($alias === '') {
 }
 
 try {
-    $loketAccounts = antrian_loket_accounts();
-    if (!isset($loketAccounts[$loket - 1])) {
+    $loketUser = antrian_loket_user_by_number($loket);
+    if (!$loketUser) {
         http_response_code(404);
         echo json_encode([
             'success' => false,
@@ -49,7 +51,6 @@ try {
         exit;
     }
 
-    $loketUser = $loketAccounts[$loket - 1];
     $userId = (int) $loketUser['id'];
 
     antrian_update_user_profile($userId, $loketUser['username'], $alias);

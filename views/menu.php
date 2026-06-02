@@ -15,10 +15,9 @@ $currentLoket = (int) $state['loket'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | SMK N 4 Surakarta</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/assets/vendor/lucide/lucide.min.js"></script>
 </head>
 <body class="app-shell app-home">
     <main class="page page-home" style="max-width: 800px; margin-top: 40px; margin-bottom: 60px;">
@@ -64,8 +63,8 @@ $currentLoket = (int) $state['loket'];
                     <a class="button button-primary" href="/login" style="padding: 12px 24px;">
                         <i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Masuk Akun
                     </a>
-                    <a class="button button-ghost" href="/register" style="padding: 12px 20px;">
-                        <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i> Daftar
+                    <a class="button button-ghost" href="/login" style="padding: 12px 20px;">
+                        <i data-lucide="shield" style="width: 16px; height: 16px;"></i> Akun Admin
                     </a>
                 <?php endif; ?>
             </div>

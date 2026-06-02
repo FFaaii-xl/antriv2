@@ -26,9 +26,11 @@ try {
 
     $loketAccounts = antrian_loket_accounts();
     $aliases = [];
-    foreach ($loketAccounts as $index => $acc) {
-        $loketNum = $index + 1;
-        $aliases[$loketNum] = $acc['alias'] ?: 'Loket ' . $loketNum;
+    foreach ($loketAccounts as $acc) {
+        $loketNum = (int) ($acc['loket_number'] ?? 0);
+        if ($loketNum > 0) {
+            $aliases[$loketNum] = $acc['alias'] ?: 'Loket ' . $loketNum;
+        }
     }
 
     $callsMap = [];
@@ -40,8 +42,12 @@ try {
     }
 
     $mappedCalls = [];
-    foreach ($loketAccounts as $index => $acc) {
-        $loketNum = $index + 1;
+    foreach ($loketAccounts as $acc) {
+        $loketNum = (int) ($acc['loket_number'] ?? 0);
+        if ($loketNum <= 0) {
+            continue;
+        }
+
         $dbCall = $callsMap[$loketNum] ?? ['antrian' => 0, 'updated_at' => ''];
         
         $uid = (int) $acc['id'];

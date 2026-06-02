@@ -27,6 +27,52 @@ function antrian_is_logged_in(): bool
     return antrian_current_user() !== null;
 }
 
+function antrian_csrf_token(): string
+{
+    antrian_session_bootstrap();
+
+    if (!isset($_SESSION['_csrf_token']) || !is_string($_SESSION['_csrf_token']) || $_SESSION['_csrf_token'] === '') {
+        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['_csrf_token'];
+}
+
+function antrian_csrf_hidden_input(): string
+{
+    return '<input type="hidden" name="_csrf" value="' . htmlspecialchars(antrian_csrf_token(), ENT_QUOTES, 'UTF-8') . '">';
+}
+
+function antrian_request_csrf_token(): string
+{
+    $token = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['_csrf'] ?? '');
+
+    return trim($token);
+}
+
+function antrian_require_csrf(): void
+{
+    $sessionToken = antrian_csrf_token();
+    $requestToken = antrian_request_csrf_token();
+
+    if ($requestToken === '' || !hash_equals($sessionToken, $requestToken)) {
+        http_response_code(419);
+        $acceptHeader = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+
+        if (str_contains($acceptHeader, 'application/json')) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'CSRF token tidak valid.',
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo 'CSRF token tidak valid.';
+        }
+
+        exit;
+    }
+}
+
 function antrian_login_user(array $user): void
 {
     antrian_session_bootstrap();
@@ -59,7 +105,7 @@ function antrian_find_user_by_username(string $username): ?array
 {
     $normalizedUsername = strtolower(trim($username));
 
-    $statement = antrian_db()->prepare('SELECT id, username, alias, password_hash, role, created_at FROM users WHERE username = :username LIMIT 1');
+    $statement = antrian_db()->prepare('SELECT id, username, alias, loket_number, password_hash, role, created_at FROM users WHERE username = :username LIMIT 1');
     $statement->execute(['username' => $normalizedUsername]);
     $user = $statement->fetch();
 
@@ -68,7 +114,7 @@ function antrian_find_user_by_username(string $username): ?array
 
 function antrian_find_user_by_id(int $userId): ?array
 {
-    $statement = antrian_db()->prepare('SELECT id, username, alias, password_hash, role, created_at FROM users WHERE id = :id LIMIT 1');
+    $statement = antrian_db()->prepare('SELECT id, username, alias, loket_number, password_hash, role, created_at FROM users WHERE id = :id LIMIT 1');
     $statement->execute(['id' => $userId]);
     $user = $statement->fetch();
 
@@ -159,13 +205,60 @@ function antrian_generate_loket_alias(int $loketNumber): string
     return 'Loket ' . $loketNumber;
 }
 
+function antrian_next_available_loket_number(): int
+{
+    $statement = antrian_db()->query('SELECT loket_number FROM users WHERE role = "loket" AND loket_number > 0 ORDER BY loket_number ASC');
+    $usedNumbers = [];
+
+    foreach ($statement ? $statement->fetchAll() : [] as $row) {
+        $usedNumbers[] = (int) $row['loket_number'];
+    }
+
+    $candidate = 1;
+
+    while (in_array($candidate, $usedNumbers, true)) {
+        $candidate++;
+    }
+
+    return $candidate;
+}
+
+function antrian_loket_number_for_user_id(int $userId): ?int
+{
+    $statement = antrian_db()->prepare('SELECT loket_number FROM users WHERE id = :id AND role = "loket" LIMIT 1');
+    $statement->execute(['id' => $userId]);
+    $loketNumber = $statement->fetchColumn();
+
+    return $loketNumber !== false ? max(1, (int) $loketNumber) : null;
+}
+
+function antrian_loket_user_by_number(int $loketNumber): ?array
+{
+    if ($loketNumber <= 0) {
+        return null;
+    }
+
+    $statement = antrian_db()->prepare(
+        'SELECT id, username, alias, loket_number, role, created_at
+         FROM users
+         WHERE role = "loket" AND loket_number = :loket_number
+         LIMIT 1'
+    );
+    $statement->bindValue(':loket_number', $loketNumber, PDO::PARAM_INT);
+    $statement->execute();
+
+    $user = $statement->fetch();
+
+    return $user ?: null;
+}
+
 function antrian_create_quick_loket(): array
 {
     $username = antrian_generate_loket_username();
-    $loketNumber = (int) filter_var(substr($username, 6), FILTER_VALIDATE_INT) ?: 1;
+    $loketNumber = antrian_next_available_loket_number();
     $temporaryPassword = bin2hex(random_bytes(4));
 
-    return antrian_create_user($username, $temporaryPassword, 'loket', antrian_generate_loket_alias($loketNumber)) + [
+    return antrian_create_user($username, $temporaryPassword, 'loket', antrian_generate_loket_alias($loketNumber), $loketNumber) + [
         'temporary_password' => $temporaryPassword,
     ];
 }
@@ -173,14 +266,15 @@ function antrian_create_quick_loket(): array
 function antrian_sync_loket_slots(): void
 {
     $database = antrian_db();
-    $loketCount = antrian_count_loket_accounts();
-    $currentRows = $database->query('SELECT loket FROM loket_last_call ORDER BY loket ASC')->fetchAll();
-    $existingLokets = array_map(static fn (array $row): int => (int) $row['loket'], $currentRows ?: []);
+    $loketNumbers = $database->query('SELECT loket_number FROM users WHERE role = "loket" AND loket_number > 0 ORDER BY loket_number ASC')->fetchAll();
+    $existingRows = $database->query('SELECT loket FROM loket_last_call ORDER BY loket ASC')->fetchAll();
+    $existingLokets = array_map(static fn (array $row): int => (int) $row['loket'], $existingRows ?: []);
 
     $database->beginTransaction();
 
     try {
-        for ($loket = 1; $loket <= $loketCount; $loket++) {
+        foreach ($loketNumbers as $loketRow) {
+            $loket = (int) $loketRow['loket_number'];
             $statement = $database->prepare(
                 'INSERT INTO loket_last_call (loket, antrian, updated_at)
                  VALUES (:loket, 0, :updated_at)
@@ -193,8 +287,15 @@ function antrian_sync_loket_slots(): void
         }
 
         if ($existingLokets) {
-            $deleteStatement = $database->prepare('DELETE FROM loket_last_call WHERE loket > :max_loket');
-            $deleteStatement->execute(['max_loket' => $loketCount]);
+            $keepList = array_values(array_unique(array_map('intval', array_column($loketNumbers, 'loket_number'))));
+
+            if ($keepList) {
+                $placeholders = implode(',', array_fill(0, count($keepList), '?'));
+                $deleteStatement = $database->prepare('DELETE FROM loket_last_call WHERE loket NOT IN (' . $placeholders . ')');
+                $deleteStatement->execute($keepList);
+            } else {
+                $database->exec('DELETE FROM loket_last_call');
+            }
         }
 
         $database->commit();
@@ -207,7 +308,7 @@ function antrian_sync_loket_slots(): void
     }
 }
 
-function antrian_create_user(string $username, string $password, string $role, ?string $alias = null): array
+function antrian_create_user(string $username, string $password, string $role, ?string $alias = null, ?int $loketNumber = null): array
 {
     $normalizedUsername = strtolower(trim($username));
     $normalizedRole = $role === 'admin' ? 'admin' : 'loket';
@@ -217,16 +318,23 @@ function antrian_create_user(string $username, string $password, string $role, ?
         $normalizedAlias = $normalizedUsername;
     }
 
+    if ($normalizedRole === 'loket') {
+        $normalizedLoketNumber = $loketNumber !== null && $loketNumber > 0 ? $loketNumber : antrian_next_available_loket_number();
+    } else {
+        $normalizedLoketNumber = 0;
+    }
+
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
     $createdAt = date('Y-m-d H:i:s');
 
     $statement = antrian_db()->prepare(
-        'INSERT INTO users (username, alias, password_hash, role, created_at)
-         VALUES (:username, :alias, :password_hash, :role, :created_at)'
+        'INSERT INTO users (username, alias, loket_number, password_hash, role, created_at)
+         VALUES (:username, :alias, :loket_number, :password_hash, :role, :created_at)'
     );
     $statement->execute([
         'username' => $normalizedUsername,
         'alias' => $normalizedAlias,
+        'loket_number' => $normalizedLoketNumber,
         'password_hash' => $passwordHash,
         'role' => $normalizedRole,
         'created_at' => $createdAt,
@@ -236,6 +344,7 @@ function antrian_create_user(string $username, string $password, string $role, ?
         'id' => (int) antrian_db()->lastInsertId(),
         'username' => $normalizedUsername,
         'alias' => $normalizedAlias,
+        'loket_number' => $normalizedLoketNumber,
         'password_hash' => $passwordHash,
         'role' => $normalizedRole,
         'created_at' => $createdAt,
@@ -245,10 +354,10 @@ function antrian_create_user(string $username, string $password, string $role, ?
 function antrian_loket_accounts(): array
 {
     $statement = antrian_db()->query(
-        'SELECT id, username, alias, role, created_at
+        'SELECT id, username, alias, loket_number, role, created_at
          FROM users
          WHERE role = "loket"
-         ORDER BY id ASC'
+         ORDER BY loket_number ASC, id ASC'
     );
 
     return $statement ? $statement->fetchAll() : [];

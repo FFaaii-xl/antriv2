@@ -9,8 +9,11 @@ antrian_require_role(['admin']);
 antrian_session_bootstrap();
 
 $currentUser = antrian_current_user();
+$csrfToken = antrian_csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    antrian_require_csrf();
+
     $action = (string) ($_POST['action'] ?? '');
     $returnRole = (string) ($_POST['return_role'] ?? ($_GET['role'] ?? 'all'));
     $returnSearch = (string) ($_POST['return_search'] ?? ($_GET['q'] ?? ''));
@@ -179,17 +182,22 @@ $settings = antrian_app_settings();
 $state = antrian_state();
 $loketAccounts = antrian_loket_accounts();
 $loketLastCalls = antrian_loket_last_calls();
+$loketLastCallsByLoket = [];
+
+foreach ($loketLastCalls as $lastCall) {
+    $loketLastCallsByLoket[(int) $lastCall['loket']] = $lastCall;
+}
 $loketRows = [];
 
-foreach ($loketAccounts as $index => $loketAccount) {
-    $loketNumber = $index + 1;
-    $lastCall = $loketLastCalls[$index] ?? ['antrian' => 0];
+foreach ($loketAccounts as $loketAccount) {
+    $loketNumber = (int) ($loketAccount['loket_number'] ?? 0);
+    $lastCall = $loketLastCallsByLoket[$loketNumber] ?? ['antrian' => 0];
 
     $loketRows[] = [
         'no' => $loketNumber,
         'nama' => $loketAccount['username'],
         'alias' => $loketAccount['alias'] ?: antrian_generate_loket_alias($loketNumber),
-        'url' => '/loket&loket=' . $loketNumber,
+        'url' => '/loket?loket=' . $loketNumber,
         'antrian_terakhir' => antrian_format_number((int) $lastCall['antrian']),
         'role' => $loketAccount['role'],
         'id' => (int) $loketAccount['id'],
@@ -214,11 +222,10 @@ unset($_SESSION['admin_notice']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
-<body class="app-shell app-admin" data-role="admin" data-status-url="/api/status.php?peek=1" data-reset-url="/api/reset.php">
+<body class="app-shell app-admin" data-role="admin" data-status-url="/api/status.php?peek=1" data-reset-url="/api/reset.php" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <main class="page page-admin">
         <section class="admin-header">
             <div>
@@ -249,6 +256,7 @@ unset($_SESSION['admin_notice']);
             <form class="announcement-settings" method="post" action="/admin" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="update_settings">
                 <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                <?= antrian_csrf_hidden_input() ?>
                 <label class="settings-field settings-field-full">
                     <span>Intro panggilan (MP3)</span>
                     <input type="file" name="intro_audio" accept="audio/mpeg,audio/mp3,.mp3">
@@ -289,6 +297,7 @@ unset($_SESSION['admin_notice']);
                     <form method="post" action="/admin">
                         <input type="hidden" name="action" value="create_loket">
                         <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= antrian_csrf_hidden_input() ?>
                         <button class="button button-primary quick-action-button" type="submit">Buat Loket</button>
                     </form>
                 </div>
@@ -337,6 +346,7 @@ unset($_SESSION['admin_notice']);
                                                          <input type="hidden" name="action" value="update_user">
                                                          <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
                                                          <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                                                         <?= antrian_csrf_hidden_input() ?>
                                                          <label class="table-inline-field">
                                                              <span>Nama</span>
                                                              <input type="text" name="username" value="<?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?>" required>
@@ -371,6 +381,7 @@ unset($_SESSION['admin_notice']);
                                                         <input type="hidden" name="action" value="delete_user">
                                                         <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
                                                         <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <?= antrian_csrf_hidden_input() ?>
                                                         <button class="button button-danger table-action-button" type="submit">Hapus</button>
                                                     </form>
                                                 </div>

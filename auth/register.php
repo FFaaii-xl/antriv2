@@ -5,105 +5,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 
 antrian_session_bootstrap();
-
-$errors = [];
-$username = '';
-$role = 'loket';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim((string) ($_POST['username'] ?? ''));
-    $password = (string) ($_POST['password'] ?? '');
-    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
-    $role = (string) ($_POST['role'] ?? 'loket');
-    $role = in_array($role, ['admin', 'loket'], true) ? $role : 'loket';
-
-    if ($username === '') {
-        $errors[] = 'Username wajib diisi.';
-    }
-
-    if (strlen($password) < 6) {
-        $errors[] = 'Password minimal 6 karakter.';
-    }
-
-    if ($password !== $confirmPassword) {
-        $errors[] = 'Konfirmasi password tidak cocok.';
-    }
-
-    if (antrian_find_user_by_username($username)) {
-        $errors[] = 'Username sudah digunakan.';
-    }
-
-    if (!$errors) {
-        $user = antrian_create_user($username, $password, $role);
-        antrian_login_user($user);
-
-        if ($user['role'] === 'admin') {
-            header('Location: /admin');
-            exit;
-        }
-
-        header('Location: /loket&loket=1');
-        exit;
-    }
-}
 ?><!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Daftar</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body class="app-shell auth-shell">
     <main class="auth-page">
         <section class="auth-card">
-            <p class="eyebrow">Buat Akun</p>
+            <p class="eyebrow">Registrasi Dinonaktifkan</p>
             <h1>Antrian SPMB 2026</h1>
             <p class="lead">By SMK N 4 Surakarta</p>
-            <p class="lead">Buat akun admin atau loket untuk masuk ke panel yang sesuai.</p>
+            <p class="lead">Semua akun loket dibuat dan dihapus lewat panel admin agar jumlah loket tetap terkontrol secara lokal.</p>
+            <p class="lead">Untuk masuk, gunakan akun yang sudah dibuat admin.</p>
 
-            <?php if ($errors): ?>
-                <div class="auth-alert auth-alert-error">
-                    <?php foreach ($errors as $error): ?>
-                        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            <div class="auth-alert auth-alert-error">
+                <p>Pendaftaran mandiri dinonaktifkan.</p>
+            </div>
 
-            <form method="post" class="auth-form">
-                <label>
-                    Username
-                    <input type="text" name="username" value="<?= htmlspecialchars($username, ENT_QUOTES, 'UTF-8') ?>" required>
-                </label>
-
-                <label>
-                    Password
-                    <input type="password" name="password" required>
-                </label>
-
-                <label>
-                    Konfirmasi Password
-                    <input type="password" name="confirm_password" required>
-                </label>
-
-                <fieldset class="auth-role-group">
-                    <legend>Pilih tipe akun</legend>
-                    <label>
-                        <input type="radio" name="role" value="loket" <?= $role === 'loket' ? 'checked' : '' ?>>
-                        Loket
-                    </label>
-                    <label>
-                        <input type="radio" name="role" value="admin" <?= $role === 'admin' ? 'checked' : '' ?>>
-                        Admin
-                    </label>
-                </fieldset>
-
-                <button type="submit" class="button button-primary">Daftar</button>
-            </form>
-
-            <p class="auth-links">Sudah punya akun? <a href="/login">Login</a></p>
+            <a class="button button-primary" href="/login">Ke Login</a>
             <p class="auth-links"><a href="/menu">Kembali ke menu</a></p>
         </section>
     </main>

@@ -6,7 +6,9 @@ require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../auth/helpers.php';
 
 $loket = filter_input(INPUT_GET, 'loket', FILTER_VALIDATE_INT);
-$loket = $loket && $loket > 0 ? $loket : 1;
+$loket = $loket && $loket > 0 ? $loket : (int) ($_GET['loket'] ?? 1);
+$loket = $loket > 0 ? $loket : 1;
+$requestedLoket = $loket;
 
 $loketAccounts = antrian_loket_accounts();
 $loketCount = count($loketAccounts);
@@ -16,11 +18,8 @@ if ($loketCount === 0) {
     $loketCount = count($loketAccounts);
 }
 
-if ($loketCount > 0 && $loket > $loketCount) {
-    $loket = $loketCount;
-}
-
-$currentLoketAccount = $loketAccounts[$loket - 1] ?? null;
+$currentLoketAccount = antrian_loket_user_by_number($requestedLoket);
+$loket = $requestedLoket;
 $aliasName = $currentLoketAccount ? ($currentLoketAccount['alias'] ?: 'Loket ' . $loket) : 'Loket ' . $loket;
 
 $state = antrian_state();
@@ -38,18 +37,18 @@ if (!is_file($bgFile) && is_file($bgFileLegacy)) {
 $bgStyle = is_file($bgFile) 
     ? "background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.92)), url('{$bgPath}?v=" . filemtime($bgFile) . "'); background-size: cover; background-position: center;"
     : "";
+$csrfToken = antrian_csrf_token();
 ?><!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Loket <?= $loket ?><?= ($aliasName && $aliasName !== 'Loket ' . $loket) ? ' (' . htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') . ')' : '' ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/assets/vendor/lucide/lucide.min.js"></script>
 </head>
-<body class="app-shell app-loket" data-role="loket" data-next-base-url="/api/next.php" data-loket="<?= $loket ?>">
+<body class="app-shell app-loket" data-role="loket" data-next-base-url="/api/next.php" data-loket="<?= $loket ?>" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <main class="page page-loket" style="max-width: 800px; margin-top: 40px; margin-bottom: 60px;">
         <section class="panel-card loket-header" style="position: relative; overflow: hidden; padding: 32px; display: flex; justify-content: space-between; align-items: center; gap: 24px;">
             <div style="flex: 1;">
@@ -86,8 +85,11 @@ $bgStyle = is_file($bgFile)
                         <i data-lucide="list" style="width: 14px; height: 14px;"></i> Pilih Loket Aktif
                     </label>
                     <select id="loketSelect" class="input-select" style="margin-top: 8px;">
-                        <?php foreach ($loketAccounts as $index => $acc): ?>
-                            <?php $loketNum = $index + 1; ?>
+                        <?php if (!$currentLoketAccount): ?>
+                            <option value="<?= $loket ?>" selected>Loket <?= $loket ?> (slot kosong)</option>
+                        <?php endif; ?>
+                        <?php foreach ($loketAccounts as $acc): ?>
+                            <?php $loketNum = (int) ($acc['loket_number'] ?? 0); ?>
                             <?php $optionAlias = $acc['alias'] ?: 'Loket ' . $loketNum; ?>
                             <?php $hasOptionAlias = $optionAlias && $optionAlias !== 'Loket ' . $loketNum && $optionAlias !== $acc['username']; ?>
                             <option value="<?= $loketNum ?>" <?= $loketNum === $loket ? 'selected' : '' ?>>
@@ -102,7 +104,7 @@ $bgStyle = is_file($bgFile)
                         <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i> Ubah Nama Alias Loket Ini
                     </label>
                     <div style="display: flex; gap: 8px; margin-top: 10px;">
-                        <input type="text" id="loketAliasInput" class="input-select" style="margin-top: 0; flex: 1;" value="<?= htmlspecialchars($aliasName && $aliasName !== 'Loket ' . $loket ? $aliasName : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Contoh: Loket Pembayaran">
+                        <input type="text" id="loketAliasInput" class="input-select" style="margin-top: 0; flex: 1;" value="<?= htmlspecialchars($currentLoketAccount && $aliasName && $aliasName !== 'Loket ' . $loket ? $aliasName : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Contoh: Loket Pembayaran">
                         <button class="button button-ghost" id="saveAliasButton" type="button" style="padding: 10px 20px; white-space: nowrap;">Simpan</button>
                     </div>
                 </div>
@@ -113,6 +115,7 @@ $bgStyle = is_file($bgFile)
                     </label>
                     <form id="loketBgForm" method="post" enctype="multipart/form-data" action="/api/upload_loket_bg.php" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
                         <input type="hidden" name="loket" value="<?= $loket ?>">
+                        <?= antrian_csrf_hidden_input() ?>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <input type="file" id="loketBgInput" name="background" accept="image/*" class="input-select" style="margin-top: 0; flex: 1; padding: 10px;" required>
                             <button class="button button-primary" type="submit" style="padding: 12px 20px; white-space: nowrap;">Upload</button>
@@ -128,6 +131,7 @@ $bgStyle = is_file($bgFile)
                             </div>
                             <form method="post" action="/api/delete_loket_bg.php" style="margin: 0;" onsubmit="return confirm('Hapus foto profil loket ini?');">
                                 <input type="hidden" name="loket" value="<?= $loket ?>">
+                                <?= antrian_csrf_hidden_input() ?>
                                 <button class="button button-danger" type="submit" style="padding: 8px 12px; font-size: 0.8rem; border-radius: 10px !important;">Hapus</button>
                             </form>
                         </div>
@@ -159,7 +163,7 @@ $bgStyle = is_file($bgFile)
             </h2>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <p class="mb-0" style="font-size: 0.98rem; color: var(--text);">Antrian saat ini: <strong id="currentQueueNumber" style="color: var(--accent-strong); font-size: 1.1rem; font-weight: 750;"><?= htmlspecialchars($currentQueue, ENT_QUOTES, 'UTF-8') ?></strong></p>
-                <p class="mb-0" style="font-size: 0.98rem; color: var(--text);">Loket aktif: <strong id="loketActive" style="color: var(--accent-strong); font-size: 1.1rem; font-weight: 750;">Loket <?= $loket ?><?= ($aliasName && $aliasName !== 'Loket ' . $loket) ? ' (' . htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') . ')' : '' ?></strong></p>
+                <p class="mb-0" style="font-size: 0.98rem; color: var(--text);">Loket aktif: <strong id="loketActive" style="color: var(--accent-strong); font-size: 1.1rem; font-weight: 750;">Loket <?= $loket ?><?= ($currentLoketAccount && $aliasName && $aliasName !== 'Loket ' . $loket) ? ' (' . htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') . ')' : '' ?></strong></p>
                 <p id="loketMessage" class="mb-0 text-muted" style="font-size: 0.92rem; display: flex; align-items: center; gap: 6px; margin-top: 6px;">
                     <i data-lucide="info" style="width: 16px; height: 16px;" class="text-muted"></i> Siap memanggil antrian berikutnya.
                 </p>

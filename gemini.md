@@ -21,7 +21,15 @@ Dokumen ini berfungsi sebagai referensi sesi mendatang untuk mendokumentasikan k
    - Menetapkan "Loket N" (1-based index) sebagai penamaan primer yang tampil menonjol (seperti pada *badge* papan display dan halaman loket).
    - Menyajikan *alias* kustom (misal: "Loket Registrasi A") secara sekunder sebagai teks tambahan dalam tanda kurung atau baris tambahan di bawah nama utama untuk menjaga keterbacaan serta konsistensi sistem.
 
-5. **Palet Warna Aksen Putih & Ungu Premium**
+5. **Nomor Loket Stabil & Dikelola Admin**
+   - Setiap akun loket kini menyimpan `loket_number` sendiri, sehingga penambahan atau penghapusan loket tidak menggeser slot loket lain.
+   - Admin dapat menambah/mengurangi loket dari panel master tanpa membuat nomor slot berubah untuk loket yang sudah ada.
+
+6. **Proteksi CSRF untuk Aksi Tulis**
+   - Seluruh aksi yang mengubah data penting sudah diproteksi dengan CSRF token.
+   - Proteksi ini diterapkan pada panel admin, pemanggilan loket, reset, ubah alias, dan upload/hapus foto profil.
+
+7. **Palet Warna Aksen Putih & Ungu Premium**
    - Mengadopsi tema **SaaS Light Mode Premium** dengan warna latar belakang putih soft (`#fdfaff` / `#fbfdff`), kartu putih bersih, bayangan halus (`0 18px 45px rgba(124, 58, 237, 0.05)`), dan border tipis slate-purple (`rgba(124, 58, 237, 0.08)`).
    - Menggunakan warna **Ungu Royal SMKN 4 Surakarta** (`#7c3aed` / `#6d28d9`) sebagai aksen utama untuk elemen penyorot, tombol utama, ikon Lucide, dan dot live reaktif.
    - Kartu loket aktif (`.loket-card-active`) memiliki glow ungu reaktif yang elegan.
@@ -70,14 +78,34 @@ CREATE TABLE loket_last_call (
 Menyimpan akun pengguna (role `admin` dan `loket`). Kolom `alias` digunakan untuk menampilkan nama kustom/panggilan masing-masing loket di papan display utama.
 ```sql
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    alias TEXT NOT NULL DEFAULT "",
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ("admin", "loket")),
-    created_at TEXT NOT NULL
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   username TEXT NOT NULL UNIQUE,
+   alias TEXT NOT NULL DEFAULT "",
+   loket_number INTEGER NOT NULL DEFAULT 0,
+   password_hash TEXT NOT NULL,
+   role TEXT NOT NULL CHECK (role IN ("admin", "loket")),
+   created_at TEXT NOT NULL
 );
 ```
+
+Catatan:
+- `loket_number` dipakai sebagai slot tetap loket.
+- Nilai `0` dipakai untuk akun non-loket atau saat migrasi data lama.
+- Penomoran tidak diurut ulang saat ada loket dihapus.
+
+---
+
+## 🚀 Panduan Instalasi Singkat
+
+Dokumentasi lengkap untuk instalasi di komputer baru sudah dipindahkan ke [README.md](README.md).
+
+Ringkasnya:
+
+1. Pasang PHP 8.1+ atau XAMPP.
+2. Aktifkan ekstensi `pdo_sqlite`, `sqlite3`, `gd`, dan `fileinfo`.
+3. Taruh project di folder web server, lalu akses via `http://localhost/...`.
+4. Login admin awal: `admin / admin123`.
+5. Loket dikelola dari panel admin, bukan dari registrasi publik.
 
 ---
 
@@ -112,4 +140,9 @@ CREATE TABLE users (
 7. **[Milestone 7] Manajemen Foto Profil dari Admin & URL Bersih**
    - **Manajemen Foto Profil Terpusat**: Memperkuat panel admin master (`views/admin.php`) agar admin dapat langsung mengunggah, mengubah, dan menghapus foto profil (avatar) masing-masing loket dari dropdown aksi di tabel daftar loket.
    - **Penamaan File Berbasis User ID**: Mentransisikan penamaan file gambar profil dari `loket_{index}.jpg` (rentan tertukar saat loket ditambah/dihapus) menjadi `loket_uid_{id}.jpg` yang diikat langsung ke `id` unik akun pengguna di database. Semua titik akses (API status, upload, delete, views) sudah diperbarui dengan fallback ke file legacy untuk menjaga kompatibilitas mundur.
-   - **Migrasi URL Bersih (Clean URLs)**: Menghapus seluruh referensi URL lama `index.php?page=...` di seluruh codebase (admin.php, loket.php, menu.php, login.php, register.php, logout.php, helpers.php, API redirect) dan menggantinya dengan URL bersih (`/admin`, `/menu`, `/layar`, `/login`, `/register`, `/logout`, `/loket&loket=N`).
+   - **Migrasi URL Bersih (Clean URLs)**: Menghapus seluruh referensi URL lama `index.php?page=...` di seluruh codebase (admin.php, loket.php, menu.php, login.php, register.php, logout.php, helpers.php, API redirect) dan menggantinya dengan URL bersih (`/admin`, `/menu`, `/layar`, `/login`, `/register`, `/logout`, `/loket?loket=N`).
+
+8. **[Milestone 8] Hardening Operasional Lokal**
+   - Menjaga slot loket tetap stabil melalui kolom `loket_number` agar operasi 8 loket tidak bentrok saat ada penambahan atau pengurangan loket.
+   - Menonaktifkan registrasi publik dan mengarahkan seluruh manajemen akun loket ke panel admin.
+   - Menambahkan proteksi CSRF pada semua aksi tulis yang sensitif.

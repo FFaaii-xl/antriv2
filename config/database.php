@@ -62,6 +62,7 @@ function antrian_db(): PDO
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
             alias TEXT NOT NULL DEFAULT "",
+            loket_number INTEGER NOT NULL DEFAULT 0,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL CHECK (role IN ("admin", "loket")),
             created_at TEXT NOT NULL
@@ -80,6 +81,7 @@ function antrian_db(): PDO
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
                 alias TEXT NOT NULL DEFAULT "",
+                loket_number INTEGER NOT NULL DEFAULT 0,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL CHECK (role IN ("admin", "loket")),
                 created_at TEXT NOT NULL
@@ -107,6 +109,20 @@ function antrian_db(): PDO
         $pdo->exec('ALTER TABLE users ADD COLUMN alias TEXT NOT NULL DEFAULT ""');
     }
 
+    $usersColumns = $pdo->query('PRAGMA table_info(users)')->fetchAll();
+    $hasLoketNumberColumn = false;
+
+    foreach ($usersColumns as $column) {
+        if ((string) $column['name'] === 'loket_number') {
+            $hasLoketNumberColumn = true;
+            break;
+        }
+    }
+
+    if (!$hasLoketNumberColumn) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN loket_number INTEGER NOT NULL DEFAULT 0');
+    }
+
     $pdo->exec('UPDATE users SET alias = username WHERE alias = "" OR alias IS NULL');
 
     $legacyRole = implode('', array_map('chr', [99, 108, 105, 101, 110, 116]));
@@ -115,6 +131,25 @@ function antrian_db(): PDO
             'new_role' => 'loket',
             'old_role' => $legacyRole,
         ]);
+
+    $loketRows = $pdo->query('SELECT id, loket_number FROM users WHERE role = "loket" ORDER BY loket_number ASC, id ASC')->fetchAll();
+    $nextLoketNumber = 1;
+
+    foreach ($loketRows as $row) {
+        if ((int) $row['loket_number'] > 0) {
+            $nextLoketNumber = max($nextLoketNumber, ((int) $row['loket_number']) + 1);
+            continue;
+        }
+
+        $updateLoketNumber = $pdo->prepare('UPDATE users SET loket_number = :loket_number WHERE id = :id');
+        $updateLoketNumber->execute([
+            'loket_number' => $nextLoketNumber,
+            'id' => (int) $row['id'],
+        ]);
+        $nextLoketNumber++;
+    }
+
+    $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_loket_number ON users(loket_number) WHERE role = "loket"');
 
     $existingUsers = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 
@@ -203,8 +238,9 @@ function antrian_db(): PDO
         $pdo->exec('DROP TABLE IF EXISTS app_settings_legacy');
     }
 
-    $loketAccountCount = (int) $pdo->query('SELECT COUNT(*) FROM users WHERE role = "loket"')->fetchColumn();
-    $existingSlotCount = (int) $pdo->query('SELECT COUNT(*) FROM loket_last_call')->fetchColumn();
+    $loketNumbers = $pdo->query('SELECT loket_number FROM users WHERE role = "loket" AND loket_number > 0 ORDER BY loket_number ASC')->fetchAll();
+    $existingSlotRows = $pdo->query('SELECT loket FROM loket_last_call ORDER BY loket ASC')->fetchAll();
+    $existingSlotNumbers = array_map(static fn (array $row): int => (int) $row['loket'], $existingSlotRows ?: []);
     $now = date('Y-m-d H:i:s');
 
     $insertSlot = $pdo->prepare(
@@ -213,16 +249,19 @@ function antrian_db(): PDO
          ON CONFLICT(loket) DO NOTHING'
     );
 
-    for ($loket = 1; $loket <= $loketAccountCount; $loket++) {
+    foreach ($loketNumbers as $loketRow) {
+        $loket = (int) $loketRow['loket_number'];
         $insertSlot->execute([
             'loket' => $loket,
             'updated_at' => $now,
         ]);
     }
 
-    if ($existingSlotCount > $loketAccountCount) {
-        $deleteSlot = $pdo->prepare('DELETE FROM loket_last_call WHERE loket > :max_loket');
-        $deleteSlot->execute(['max_loket' => $loketAccountCount]);
+    if ($existingSlotNumbers) {
+        $placeholders = implode(',', array_fill(0, count($existingSlotNumbers), '?'));
+        $deleteSql = 'DELETE FROM loket_last_call WHERE loket NOT IN (' . $placeholders . ')';
+        $deleteSlot = $pdo->prepare($deleteSql);
+        $deleteSlot->execute($existingSlotNumbers);
     }
 
     return $pdo;

@@ -1,8 +1,5 @@
 (function () {
     const body = document.body;
-    const audioBasePath = '/audio';
-    let activeAnnouncementToken = 0;
-    let activeAudioElement = null;
 
     function padQueue(value) {
         return String(value ?? 0).padStart(3, '0');
@@ -12,178 +9,36 @@
         return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
     }
 
-    function stopActiveAnnouncement() {
-        activeAnnouncementToken += 1;
-
-        if (activeAudioElement) {
-            activeAudioElement.pause();
-            activeAudioElement.currentTime = 0;
-            activeAudioElement = null;
-        }
-    }
-
-    function audioPath(fileName) {
-        return `${audioBasePath}/${fileName}`;
-    }
-
-    function playAudioClip(fileName, token) {
-        return new Promise((resolve) => {
-            if (token !== activeAnnouncementToken) {
-                resolve(false);
-                return;
-            }
-
-            const audio = new Audio(audioPath(fileName));
-            audio.preload = 'auto';
-            activeAudioElement = audio;
-
-            audio.onended = () => {
-                if (activeAudioElement === audio) {
-                    activeAudioElement = null;
-                }
-                resolve(true);
-            };
-
-            audio.onerror = () => {
-                if (activeAudioElement === audio) {
-                    activeAudioElement = null;
-                }
-                resolve(false);
-            };
-
-            const playResult = audio.play();
-
-            if (playResult && typeof playResult.then === 'function') {
-                playResult.catch(() => {
-                    if (activeAudioElement === audio) {
-                        activeAudioElement = null;
-                    }
-                    resolve(false);
-                });
-            }
-        });
-    }
-
-    function numberToAudioFiles(value) {
-        const number = Math.max(0, Number.parseInt(value, 10) || 0);
-
-        if (number === 0) {
-            return ['0.MP3'];
-        }
-
-        if (number < 10) {
-            return [`${number}.MP3`];
-        }
-
-        if (number === 10) {
-            return ['sepuluh.MP3'];
-        }
-
-        if (number === 11) {
-            return ['sebelas.MP3'];
-        }
-
-        if (number < 20) {
-            return [`${number - 10}.MP3`, 'belas.MP3'];
-        }
-
-        if (number < 100) {
-            const tens = Math.floor(number / 10);
-            const remainder = number % 10;
-
-            return remainder === 0
-                ? [`${tens}.MP3`, 'puluh.MP3']
-                : [`${tens}.MP3`, 'puluh.MP3', ...numberToAudioFiles(remainder)];
-        }
-
-        if (number === 100) {
-            return ['seratus.MP3'];
-        }
-
-        if (number < 200) {
-            return ['seratus.MP3', ...numberToAudioFiles(number - 100)];
-        }
-
-        if (number < 1000) {
-            const hundreds = Math.floor(number / 100);
-            const remainder = number % 100;
-
-            return remainder === 0
-                ? [...numberToAudioFiles(hundreds), 'ratus.MP3']
-                : [...numberToAudioFiles(hundreds), 'ratus.MP3', ...numberToAudioFiles(remainder)];
-        }
-
-        const thousands = Math.floor(number / 1000);
-        const remainder = number % 1000;
-
-        return remainder === 0
-            ? [...numberToAudioFiles(thousands), 'ribu.MP3']
-            : [...numberToAudioFiles(thousands), 'ribu.MP3', ...numberToAudioFiles(remainder)];
-    }
-
-    async function playQueueAnnouncement(queue, loket, settings = {}) {
-        if (!('Audio' in window)) {
-            return false;
-        }
-
-        stopActiveAnnouncement();
-
-        const token = activeAnnouncementToken;
-        const introAudio = String(settings.intro_audio_file || '').trim();
-        const introFallback = 'in.wav';
-
-        const steps = [
-            async () => playAudioClip(introAudio || introFallback, token),
-            async () => playAudioClip('nomor-urut.MP3', token),
-            async () => {
-                for (const segment of numberToAudioFiles(queue)) {
-                    if (token !== activeAnnouncementToken) {
-                        return false;
-                    }
-
-                    await playAudioClip(segment, token);
-                    await wait(0);
-                }
-
-                return true;
-            },
-            async () => playAudioClip('loket.MP3', token),
-            async () => {
-                for (const segment of numberToAudioFiles(loket)) {
-                    if (token !== activeAnnouncementToken) {
-                        return false;
-                    }
-
-                    await playAudioClip(segment, token);
-                    await wait(0);
-                }
-
-                return true;
-            },
-        ];
-
-        for (const step of steps) {
-            if (token !== activeAnnouncementToken) {
-                return false;
-            }
-
-            await step();
-            await wait(0);
-        }
-
-        return true;
-    }
 
     async function fetchJson(url, options = {}) {
+        const csrfToken = body.dataset.csrfToken || '';
+        const headers = {
+            'Accept': 'application/json',
+            ...(options.headers || {}),
+        };
+
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+
         const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                ...(options.headers || {}),
-            },
             ...options,
+            headers,
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        let data = {};
+
+        if (responseText && contentType.includes('application/json')) {
+            try {
+                data = JSON.parse(responseText);
+            } catch (error) {
+                throw new Error('Server mengembalikan JSON yang tidak valid.');
+            }
+        } else if (responseText) {
+            throw new Error(responseText.trim() || 'Respons server bukan JSON.');
+        }
 
         if (!response.ok || data.success === false) {
             throw new Error(data.message || 'Permintaan gagal');
@@ -192,45 +47,208 @@
         return data;
     }
 
-    const announcementQueue = [];
-    let isAnnouncementPlaying = false;
-
-    async function processAnnouncementQueue() {
-        if (isAnnouncementPlaying || announcementQueue.length === 0) {
-            return;
-        }
-
-        isAnnouncementPlaying = true;
-        const nextAnn = announcementQueue.shift();
-
-        try {
-            await playQueueAnnouncement(nextAnn.queue, nextAnn.loket, nextAnn.settings);
-        } catch (err) {
-            console.error('Panggilan audio terganggu/gagal:', err);
-        } finally {
-            isAnnouncementPlaying = false;
-            // Delay 300ms between announcements for natural transition
-            window.setTimeout(processAnnouncementQueue, 300);
-        }
-    }
-
-    function queueAnnouncement(queue, loket, settings) {
-        const isDuplicate = announcementQueue.some(item => item.queue === queue && item.loket === loket);
-        if (!isDuplicate) {
-            announcementQueue.push({ queue, loket, settings });
-            processAnnouncementQueue();
-        }
-    }
-
-    function speakQueue(queue, loket, settings = {}) {
-        queueAnnouncement(queue, loket, settings);
-    }
-
     function initDisplayMode() {
         const statusUrl = body.dataset.statusUrl;
         const queueElement = document.getElementById('queueNumber');
         const logList = document.getElementById('activityLog');
         const loketBoard = document.getElementById('loketBoard');
+        const audioBasePath = '/audio';
+        let activeAnnouncementToken = 0;
+        let activeAudioElement = null;
+        const announcementQueue = [];
+        let isAnnouncementPlaying = false;
+
+        function stopActiveAnnouncement() {
+            activeAnnouncementToken += 1;
+
+            if (activeAudioElement) {
+                activeAudioElement.pause();
+                activeAudioElement.currentTime = 0;
+                activeAudioElement = null;
+            }
+        }
+
+        function audioPath(fileName) {
+            return `${audioBasePath}/${fileName}`;
+        }
+
+        function playAudioClip(fileName, token) {
+            return new Promise((resolve) => {
+                if (token !== activeAnnouncementToken) {
+                    resolve(false);
+                    return;
+                }
+
+                const audio = new Audio(audioPath(fileName));
+                audio.preload = 'auto';
+                activeAudioElement = audio;
+
+                audio.onended = () => {
+                    if (activeAudioElement === audio) {
+                        activeAudioElement = null;
+                    }
+                    resolve(true);
+                };
+
+                audio.onerror = () => {
+                    if (activeAudioElement === audio) {
+                        activeAudioElement = null;
+                    }
+                    resolve(false);
+                };
+
+                const playResult = audio.play();
+
+                if (playResult && typeof playResult.then === 'function') {
+                    playResult.catch(() => {
+                        if (activeAudioElement === audio) {
+                            activeAudioElement = null;
+                        }
+                        resolve(false);
+                    });
+                }
+            });
+        }
+
+        function numberToAudioFiles(value) {
+            const number = Math.max(0, Number.parseInt(value, 10) || 0);
+
+            if (number === 0) {
+                return ['0.MP3'];
+            }
+
+            if (number < 10) {
+                return [`${number}.MP3`];
+            }
+
+            if (number === 10) {
+                return ['sepuluh.MP3'];
+            }
+
+            if (number === 11) {
+                return ['sebelas.MP3'];
+            }
+
+            if (number < 20) {
+                return [`${number - 10}.MP3`, 'belas.MP3'];
+            }
+
+            if (number < 100) {
+                const tens = Math.floor(number / 10);
+                const remainder = number % 10;
+
+                return remainder === 0
+                    ? [`${tens}.MP3`, 'puluh.MP3']
+                    : [`${tens}.MP3`, 'puluh.MP3', ...numberToAudioFiles(remainder)];
+            }
+
+            if (number === 100) {
+                return ['seratus.MP3'];
+            }
+
+            if (number < 200) {
+                return ['seratus.MP3', ...numberToAudioFiles(number - 100)];
+            }
+
+            if (number < 1000) {
+                const hundreds = Math.floor(number / 100);
+                const remainder = number % 100;
+
+                return remainder === 0
+                    ? [...numberToAudioFiles(hundreds), 'ratus.MP3']
+                    : [...numberToAudioFiles(hundreds), 'ratus.MP3', ...numberToAudioFiles(remainder)];
+            }
+
+            const thousands = Math.floor(number / 1000);
+            const remainder = number % 1000;
+
+            return remainder === 0
+                ? [...numberToAudioFiles(thousands), 'ribu.MP3']
+                : [...numberToAudioFiles(thousands), 'ribu.MP3', ...numberToAudioFiles(remainder)];
+        }
+
+        async function playQueueAnnouncement(queue, loket, settings = {}) {
+            if (!('Audio' in window)) {
+                return false;
+            }
+
+            stopActiveAnnouncement();
+
+            const token = activeAnnouncementToken;
+            const introAudio = String(settings.intro_audio_file || '').trim();
+            const introFallback = 'in.wav';
+
+            const steps = [
+                async () => playAudioClip(introAudio || introFallback, token),
+                async () => playAudioClip('nomor-urut.MP3', token),
+                async () => {
+                    for (const segment of numberToAudioFiles(queue)) {
+                        if (token !== activeAnnouncementToken) {
+                            return false;
+                        }
+
+                        await playAudioClip(segment, token);
+                        await wait(0);
+                    }
+
+                    return true;
+                },
+                async () => playAudioClip('loket.MP3', token),
+                async () => {
+                    for (const segment of numberToAudioFiles(loket)) {
+                        if (token !== activeAnnouncementToken) {
+                            return false;
+                        }
+
+                        await playAudioClip(segment, token);
+                        await wait(0);
+                    }
+
+                    return true;
+                },
+            ];
+
+            for (const step of steps) {
+                if (token !== activeAnnouncementToken) {
+                    return false;
+                }
+
+                await step();
+                await wait(0);
+            }
+
+            return true;
+        }
+
+        async function processAnnouncementQueue() {
+            if (isAnnouncementPlaying || announcementQueue.length === 0) {
+                return;
+            }
+
+            isAnnouncementPlaying = true;
+            const nextAnn = announcementQueue.shift();
+
+            try {
+                await playQueueAnnouncement(nextAnn.queue, nextAnn.loket, nextAnn.settings);
+            } catch (err) {
+                console.error('Panggilan audio terganggu/gagal:', err);
+            } finally {
+                isAnnouncementPlaying = false;
+                window.setTimeout(processAnnouncementQueue, 300);
+            }
+        }
+
+        function queueAnnouncement(queue, loket, settings) {
+            const isDuplicate = announcementQueue.some(item => item.queue === queue && item.loket === loket);
+            if (!isDuplicate) {
+                announcementQueue.push({ queue, loket, settings });
+                processAnnouncementQueue();
+            }
+        }
+
+        function speakQueue(queue, loket, settings = {}) {
+            queueAnnouncement(queue, loket, settings);
+        }
 
         function renderLoketBoard(loketCalls, settings, activeLoketId) {
             if (!loketBoard) {
@@ -493,7 +511,7 @@
 
         if (loketSelect) {
             loketSelect.addEventListener('change', () => {
-                window.location.href = `/loket&loket=${loketSelect.value}`;
+                window.location.href = `/loket?loket=${loketSelect.value}`;
             });
             syncLoketLabel();
         }

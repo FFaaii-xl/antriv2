@@ -7,10 +7,9 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Display</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/assets/vendor/lucide/lucide.min.js"></script>
 </head>
 <body class="app-shell app-display" data-role="display" data-status-url="/api/status.php">
     <main class="page page-display" style="margin-top: 0; margin-bottom: 0;">
