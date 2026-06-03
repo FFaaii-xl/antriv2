@@ -227,6 +227,22 @@ function antrian_db(): PDO
         $pdo->exec('ALTER TABLE app_settings ADD COLUMN display_rows INTEGER NOT NULL DEFAULT 2');
     }
 
+    $settingsColumns = $pdo->query('PRAGMA table_info(app_settings)')->fetchAll();
+    $hasVoicePackColumn = false;
+
+    foreach ($settingsColumns as $column) {
+        if ((string) $column['name'] === 'voice_pack') {
+            $hasVoicePackColumn = true;
+            break;
+        }
+    }
+
+    if (!$hasVoicePackColumn) {
+        $pdo->exec("ALTER TABLE app_settings ADD COLUMN voice_pack TEXT NOT NULL DEFAULT 'default'");
+    }
+
+    antrian_db_migrate_audio_packs();
+
     if (!$hasQueueStartColumn || !$hasIntroColumn || !$hasOutroColumn) {
         $pdo->exec('DROP TABLE IF EXISTS app_settings_legacy');
         $pdo->exec('ALTER TABLE app_settings RENAME TO app_settings_legacy');
@@ -303,4 +319,46 @@ function antrian_loket_last_calls(): array
 function antrian_format_number(int $number): string
 {
     return str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+}
+
+function antrian_db_migrate_audio_packs(): void
+{
+    static $done = false;
+
+    if ($done) {
+        return;
+    }
+
+    $done = true;
+
+    $audioRoot = __DIR__ . '/../audio';
+    $defaultDir = $audioRoot . '/default';
+
+    if (!is_dir($defaultDir) && !mkdir($defaultDir, 0777, true) && !is_dir($defaultDir)) {
+        return;
+    }
+
+    foreach (['ardi', 'gadis'] as $slug) {
+        $packDir = $audioRoot . '/' . $slug;
+        if (!is_dir($packDir)) {
+            mkdir($packDir, 0777, true);
+        }
+    }
+
+    foreach (['*.MP3', '*.mp3', '*.wav', '*.WAV'] as $pattern) {
+        foreach (glob($audioRoot . '/' . $pattern) ?: [] as $filePath) {
+            if (!is_file($filePath)) {
+                continue;
+            }
+
+            $target = $defaultDir . '/' . basename($filePath);
+            if (is_file($target)) {
+                continue;
+            }
+
+            if (!@rename($filePath, $target)) {
+                @copy($filePath, $target);
+            }
+        }
+    }
 }

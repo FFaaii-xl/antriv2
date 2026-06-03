@@ -383,23 +383,137 @@ function antrian_loket_accounts(): array
     return $statement ? $statement->fetchAll() : [];
 }
 
+function antrian_voice_pack_slugs(): array
+{
+    return ['default', 'ardi', 'gadis'];
+}
+
+function antrian_voice_packs_catalog(): array
+{
+    return [
+        'default' => [
+            'label' => 'Suara Default',
+            'description' => 'Rekaman standar yang sudah terpasang di folder audio/default.',
+        ],
+        'ardi' => [
+            'label' => 'Suara Ardi',
+            'description' => 'Suara pria (rekaman sedang disiapkan).',
+        ],
+        'gadis' => [
+            'label' => 'Suara Gadis',
+            'description' => 'Suara wanita (rekaman sedang disiapkan).',
+        ],
+    ];
+}
+
+function antrian_voice_pack_required_files(): array
+{
+    return [
+        '0.MP3', '1.MP3', '2.MP3', '3.MP3', '4.MP3', '5.MP3', '6.MP3', '7.MP3', '8.MP3', '9.MP3',
+        'sepuluh.MP3', 'sebelas.MP3', 'belas.MP3', 'puluh.MP3', 'seratus.MP3', 'ratus.MP3', 'ribu.MP3',
+        'nomor-urut.MP3', 'loket.MP3', 'in.wav',
+    ];
+}
+
+function antrian_voice_pack_directory(string $slug): string
+{
+    return __DIR__ . '/../audio/' . antrian_normalize_voice_pack($slug);
+}
+
+function antrian_normalize_voice_pack(string $pack): string
+{
+    $pack = strtolower(trim($pack));
+
+    return in_array($pack, antrian_voice_pack_slugs(), true) ? $pack : 'default';
+}
+
+function antrian_voice_pack_is_ready(string $slug): bool
+{
+    $directory = antrian_voice_pack_directory($slug);
+
+    if (!is_dir($directory)) {
+        return false;
+    }
+
+    foreach (antrian_voice_pack_required_files() as $fileName) {
+        if (!is_file($directory . '/' . $fileName)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function antrian_get_voice_pack(): string
+{
+    $statement = antrian_db()->query('SELECT voice_pack FROM app_settings WHERE id = 1 LIMIT 1');
+    $row = $statement ? $statement->fetch() : false;
+    $pack = antrian_normalize_voice_pack((string) ($row['voice_pack'] ?? 'default'));
+
+    if (!antrian_voice_pack_is_ready($pack)) {
+        return antrian_voice_pack_is_ready('default') ? 'default' : $pack;
+    }
+
+    return $pack;
+}
+
+function antrian_update_voice_pack(string $pack): void
+{
+    $pack = antrian_normalize_voice_pack($pack);
+
+    if (!antrian_voice_pack_is_ready($pack)) {
+        throw new RuntimeException('Paket suara "' . $pack . '" belum lengkap. Lengkapi file MP3/WAV di folder audio/' . $pack . '/.');
+    }
+
+    $statement = antrian_db()->prepare('UPDATE app_settings SET voice_pack = :voice_pack WHERE id = 1');
+    $statement->execute(['voice_pack' => $pack]);
+}
+
 function antrian_app_settings(): array
 {
-    $statement = antrian_db()->query('SELECT id, queue_start, display_cols, display_rows FROM app_settings WHERE id = 1 LIMIT 1');
+    $statement = antrian_db()->query('SELECT id, queue_start, display_cols, display_rows, voice_pack FROM app_settings WHERE id = 1 LIMIT 1');
     $settings = $statement ? $statement->fetch() : false;
     $audioInfo = antrian_announcement_audio_info();
+    $voicePack = antrian_get_voice_pack();
+    $catalog = antrian_voice_packs_catalog();
 
     return array_merge($settings ?: [
         'id' => 1,
         'queue_start' => 1,
         'display_cols' => 4,
         'display_rows' => 2,
-    ], $audioInfo);
+        'voice_pack' => 'default',
+    ], $audioInfo, [
+        'voice_pack' => $voicePack,
+        'voice_pack_label' => $catalog[$voicePack]['label'] ?? 'Suara Default',
+        'voice_pack_ready' => antrian_voice_pack_is_ready($voicePack),
+        'voice_pack_base_path' => 'audio/' . $voicePack,
+    ]);
 }
 
 function antrian_announcement_audio_directory(): string
 {
     return __DIR__ . '/../audio/custom';
+}
+
+function antrian_api_settings_payload(): array
+{
+    $settings = antrian_app_settings();
+
+    return [
+        'intro_audio_file' => (string) $settings['intro_audio_file'],
+        'intro_audio_url' => (string) $settings['intro_audio_url'],
+        'intro_audio_exists' => (bool) $settings['intro_audio_exists'],
+        'outro_audio_file' => (string) $settings['outro_audio_file'],
+        'outro_audio_url' => (string) $settings['outro_audio_url'],
+        'outro_audio_exists' => (bool) $settings['outro_audio_exists'],
+        'queue_start' => (int) $settings['queue_start'],
+        'display_cols' => (int) ($settings['display_cols'] ?? 4),
+        'display_rows' => (int) ($settings['display_rows'] ?? 2),
+        'voice_pack' => (string) $settings['voice_pack'],
+        'voice_pack_label' => (string) $settings['voice_pack_label'],
+        'voice_pack_base_path' => (string) $settings['voice_pack_base_path'],
+    ];
 }
 
 function antrian_announcement_audio_info(): array

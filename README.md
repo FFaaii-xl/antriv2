@@ -117,6 +117,16 @@ Supaya lebih cepat dan aman dipakai di komputer lain, file tampilan utama tidak 
 
 Kalau Anda pindah ke komputer baru, pastikan folder `assets/vendor/` ikut disalin bersama project.
 
+### Cek / pasang aset otomatis
+
+Dari folder project, jalankan:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup-assets.ps1
+```
+
+Skrip ini mengunduh vendor (jika belum ada), `in.wav`, dan memverifikasi semua file `audio/*.MP3` wajib.
+
 ## Kalau CSS Tidak Muncul
 
 Ini masalah yang paling sering terjadi saat pindah ke komputer lain.

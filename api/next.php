@@ -67,14 +67,7 @@ try {
             'antrian' => $nextNumber,
             'loket' => $loket,
             'panggil' => 1,
-            'settings' => [
-                'intro_audio_file' => (string) $settings['intro_audio_file'],
-                'intro_audio_url' => (string) $settings['intro_audio_url'],
-                'intro_audio_exists' => (bool) $settings['intro_audio_exists'],
-                'outro_audio_file' => (string) $settings['outro_audio_file'],
-                'outro_audio_url' => (string) $settings['outro_audio_url'],
-                'outro_audio_exists' => (bool) $settings['outro_audio_exists'],
-            ],
+            'settings' => antrian_api_settings_payload(),
         ],
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $throwable) {

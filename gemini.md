@@ -1,47 +1,106 @@
-# Dokumentasi Proyek AntriV2 - Referensi Gemini
+# Dokumentasi Proyek AntriV2 — Referensi Gemini
 
-Dokumen ini berfungsi sebagai referensi sesi mendatang untuk mendokumentasikan keputusan arsitektur penting, konfigurasi database, dan milestone proyek.
-
----
-
-## 🏛️ Keputusan Arsitektur Penting
-
-1. **Desain Tanpa Card & Sangat Responsif**
-   - Mengikuti preferensi pengguna untuk menyajikan visual yang lebih ramping, datar, dan memanjang ke samping daripada gaya *card* besar yang memakan banyak ruang vertikal.
-   - Menghapus kelas `queue-call-card` dan menyatukan elemen ke latar belakang gelap bawaan aplikasi.
-
-2. **Kotak Ringkasan Loket & Live Log Terpadu**
-   - Menempatkan **Live Log Panggilan** di bagian *bottom-center* dalam wadah besar Ringkasan Loket, disajikan dengan tata letak minimalis horizontal satu baris yang mepet (jarak vertikal ramping 6px).
-
-3. **Polling 0.5 Detik Real-time & Sinkronisasi Panel Petugas**
-   - Meningkatkan kecepatan pengambilan data (*polling rate*) dari 1 detik menjadi **0.5 detik** (500 milidetik) pada client-side Javascript (`assets/js/main.js`) baik untuk monitor TV publik display maupun halaman operasional loket petugas (`views/loket.php`) dengan metode `peek=true` (agar tidak mengganggu trigger audio display).
-   - Menghubungkan visual "Antrian saat ini" di halaman operasional loket agar ter-update secara real-time dan instan saat tombol **Next** atau **Panggil Ulang** diklik, serta tersinkronisasi otomatis dengan server setiap 0.5 detik.
-
-4. **Prioritas Penamaan Loket Utama & Alias Tambahan**
-   - Menetapkan "Loket N" (1-based index) sebagai penamaan primer yang tampil menonjol (seperti pada *badge* papan display dan halaman loket).
-   - Menyajikan *alias* kustom (misal: "Loket Registrasi A") secara sekunder sebagai teks tambahan dalam tanda kurung atau baris tambahan di bawah nama utama untuk menjaga keterbacaan serta konsistensi sistem.
-
-5. **Nomor Loket Stabil & Dikelola Admin**
-   - Setiap akun loket kini menyimpan `loket_number` sendiri, sehingga penambahan atau penghapusan loket tidak menggeser slot loket lain.
-   - Admin dapat menambah/mengurangi loket dari panel master tanpa membuat nomor slot berubah untuk loket yang sudah ada.
-
-6. **Proteksi CSRF untuk Aksi Tulis**
-   - Seluruh aksi yang mengubah data penting sudah diproteksi dengan CSRF token.
-   - Proteksi ini diterapkan pada panel admin, pemanggilan loket, reset, ubah alias, dan upload/hapus foto profil.
-
-7. **Palet Warna Aksen Putih & Ungu Premium**
-   - Mengadopsi tema **SaaS Light Mode Premium** dengan warna latar belakang putih soft (`#fdfaff` / `#fbfdff`), kartu putih bersih, bayangan halus (`0 18px 45px rgba(124, 58, 237, 0.05)`), dan border tipis slate-purple (`rgba(124, 58, 237, 0.08)`).
-   - Menggunakan warna **Ungu Royal SMKN 4 Surakarta** (`#7c3aed` / `#6d28d9`) sebagai aksen utama untuk elemen penyorot, tombol utama, ikon Lucide, dan dot live reaktif.
-   - Kartu loket aktif (`.loket-card-active`) memiliki glow ungu reaktif yang elegan.
+Dokumen ini menjadi referensi sesi mendatang: arsitektur, routing, database, aset wajib, dan riwayat milestone. **Selaraskan dengan codebase terbaru** (bukan rencana lama yang sudah tidak dipakai).
 
 ---
 
-## 🗄️ Konfigurasi & Skema Database (SQLite)
+## Ringkasan Aplikasi
 
-Database disimpan pada berkas SQLite lokal di: `database/antrian.sqlite`.
+AntriV2 adalah sistem antrian lokal **PHP 8.1+ + SQLite** untuk banyak loket (contoh operasional: 8 loket) di satu jaringan LAN. Peran utama:
 
-### 1. Tabel `state`
-Menyimpan state global panggilan antrian saat ini.
+| Peran | URL | Keterangan |
+|--------|-----|------------|
+| Beranda / admin | `/` atau `/admin` | Panel master (perlu login admin) |
+| Layar publik | `/layar` | TV display + audio FIFO |
+| Loket petugas | `/loket?loket=N` | Next, panggil ulang, alias, foto profil |
+| Login | `/login` | Redirect: admin → `/admin`, loket → `/loket?loket=N` |
+| Register | `/register` | Dinonaktifkan (hanya pesan + link login) |
+| Logout | `/logout` | Hapus sesi |
+
+**`views/menu.php` tidak dipakai di routing.** Setelah login, pengguna langsung ke admin atau loket; tidak ada URL `/menu`.
+
+Instalasi lengkap: [README.md](README.md).
+
+---
+
+## Struktur Folder Penting
+
+```
+antriv2/
+├── index.php              # Front controller + routing
+├── .htaccess              # Rewrite ke index.php
+├── config/database.php    # PDO SQLite + migrasi schema
+├── auth/                  # login, logout, register, helpers
+├── api/                   # next, recall, status, reset, upload/delete foto, alias
+├── views/                 # admin, layar, loket (+ menu.php legacy)
+├── assets/
+│   ├── css/style.css
+│   ├── js/main.js         # Display, admin, loket + audio queue
+│   └── vendor/            # bootstrap.min.css, lucide.min.js (wajib lokal)
+├── audio/                 # Segmen MP3 + in.wav (wajib)
+│   └── custom/            # intro.mp3 / outro.mp3 (upload admin)
+├── assets/img/backgrounds/  # loket_uid_{id}.jpg (avatar)
+└── database/antrian.sqlite  # Dibuat otomatis saat pertama jalan
+```
+
+Verifikasi aset: `powershell -ExecutionPolicy Bypass -File scripts/setup-assets.ps1`
+
+---
+
+## Keputusan Arsitektur Penting
+
+1. **UI SaaS Light Mode (ungu SMKN 4 Surakarta)**  
+   Tema terang premium: latar `#fdfaff` / `#fbfdff`, aksen `#7c3aed` / `#6d28d9`, kartu putih, bayangan halus. Bukan tema gelap lama.
+
+2. **Layar display tanpa scroll (TV / Full HD)**  
+   Grid loket dari `display_cols` × `display_rows` (default 4×2). Panel floating **Atur Padding Layar** (localStorage, range **0–200 px** per sisi).
+
+3. **Live Log Panggilan**  
+   Di bagian bawah papan loket (`#activityLog`), tata letak **horizontal** satu baris. Data dari `call_history` (API mengembalikan **hingga 20** entri terbaru); JS menampilkan seluruh daftar yang dikirim (bukan dibatasi 2 di UI).
+
+4. **Polling 0,5 detik + `peek=true`**  
+   `assets/js/main.js`: `setInterval(..., 500)` untuk layar, admin, dan loket. Layar/admin/loket memakai `peek=true` agar flag `panggil` tidak “dimakan” oleh panel yang bukan pemutar audio utama. Layar mendeteksi panggilan baru lewat peningkatan `id` di `call_history`, lalu mengantre audio FIFO.
+
+5. **Penamaan loket**  
+   Primer: **Loket N** (`loket_number`, 1-based). Alias kustom sekunder (kurung / baris di bawah).
+
+6. **Slot loket stabil**  
+   Kolom `users.loket_number`; penghapusan loket tidak menggeser nomor slot loket lain. Admin kelola akun dari panel.
+
+7. **CSRF**  
+   Token sesi; header `X-CSRF-Token` untuk fetch JSON. `antrian_require_csrf()` pada: `api/next.php`, `api/recall.php`, `api/reset.php`, `api/update_loket_alias.php`, upload/hapus foto, POST admin.
+
+8. **Subfolder deployment**  
+   `antrian_base_url()` + atribut `data-base-url` di `<body>`; semua path audio/API di JS memakai prefix ini (mis. `http://192.168.x.x/antriv2`).
+
+9. **Foto profil (avatar)**  
+   File: `assets/img/backgrounds/loket_uid_{user_id}.jpg` (fallback `loket_{loket_number}.jpg`). Upload GD: resize max 800px, JPEG ~80%.
+
+10. **Audio pemanggilan & paket suara**  
+    - Segmen terbilang dari `audio/{voice_pack}/` (`default`, `ardi`, `gadis`). Pilihan di Admin → **Ganti Suara**; disimpan di `app_settings.voice_pack`.  
+    - Rangkaian di layar: **intro** (`custom/intro.mp3` atau fallback `in.wav` di paket aktif) → `nomor-urut.MP3` → digit → `loket.MP3` → digit loket.  
+    - **Outro tidak diputar** di rangkaian layar (meski admin masih bisa upload `outro.mp3`).  
+    - Antrean FIFO; jeda antar antrean **300 ms**.  
+    - Konkureksi nomor: `BEGIN IMMEDIATE TRANSACTION` di `api/next.php` dan `api/recall.php`.
+
+---
+
+## Routing (`index.php`)
+
+- Strip `SCRIPT_NAME` base path (subfolder).
+- `/` → halaman **admin** (default), bukan menu.
+- `/admin`, `/layar`, `/login`, `/register`, `/logout`, `/loket?loket=N`.
+- Route tidak dikenal → 404 HTML statis (link beranda masih `/` — perhatikan saat subfolder).
+
+API tidak melalui `index.php`; akses langsung `api/*.php`.
+
+---
+
+## Database (SQLite)
+
+Path: `database/antrian.sqlite`. Mode: WAL, `busy_timeout` 5000 ms.
+
+### Tabel `state`
 ```sql
 CREATE TABLE state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -51,8 +110,7 @@ CREATE TABLE state (
 );
 ```
 
-### 2. Tabel `app_settings`
-Menyimpan pengaturan aplikasi antrian.
+### Tabel `app_settings`
 ```sql
 CREATE TABLE app_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -64,8 +122,7 @@ CREATE TABLE app_settings (
 );
 ```
 
-### 3. Tabel `loket_last_call`
-Menyimpan nomor antrian terakhir yang dipanggil oleh masing-masing loket.
+### Tabel `loket_last_call`
 ```sql
 CREATE TABLE loket_last_call (
     loket INTEGER PRIMARY KEY,
@@ -74,8 +131,18 @@ CREATE TABLE loket_last_call (
 );
 ```
 
-### 4. Tabel `users`
-Menyimpan akun pengguna (role `admin` dan `loket`). Kolom `alias` digunakan untuk menampilkan nama kustom/panggilan masing-masing loket di papan display utama.
+### Tabel `call_history`
+Riwayat untuk live log dan deteksi panggilan baru di layar.
+```sql
+CREATE TABLE call_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loket INTEGER NOT NULL,
+    antrian INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+```
+
+### Tabel `users`
 ```sql
 CREATE TABLE users (
    id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,70 +155,81 @@ CREATE TABLE users (
 );
 ```
 
-Catatan:
-- `loket_number` dipakai sebagai slot tetap loket.
-- Nilai `0` dipakai untuk akun non-loket atau saat migrasi data lama.
-- Penomoran tidak diurut ulang saat ada loket dihapus.
+- `loket_number`: slot tetap; `0` untuk admin / migrasi.
+- Index unik: `idx_users_loket_number` untuk role loket.
+
+Seed awal (jika DB kosong): `admin` / `admin123`, `loket` / `loket123` — **ganti setelah instalasi**.
 
 ---
 
-## 🚀 Panduan Instalasi Singkat
+## Aset Wajib (harus ikut deploy)
 
-Dokumentasi lengkap untuk instalasi di komputer baru sudah dipindahkan ke [README.md](README.md).
+### `assets/vendor/` (offline, tidak dari CDN di runtime)
+| File | Sumber setup |
+|------|----------------|
+| `bootstrap/bootstrap.min.css` | Bootstrap 5.3.x |
+| `lucide/lucide.min.js` | Lucide UMD |
 
-Ringkasnya:
+### Paket suara (`audio/{paket}/`)
 
-1. Pasang PHP 8.1+ atau XAMPP.
-2. Aktifkan ekstensi `pdo_sqlite`, `sqlite3`, `gd`, dan `fileinfo`.
-3. Taruh project di folder web server, lalu akses via `http://localhost/...`.
-4. Login admin awal: `admin / admin123`.
-5. Loket dikelola dari panel admin, bukan dari registrasi publik.
+| Folder | Label admin | Status |
+|--------|-------------|--------|
+| `audio/default/` | Suara Default | Aktif (file rekaman lama dipindah ke sini) |
+| `audio/ardi/` | Suara Ardi | Opsi admin; aktif setelah semua file terisi |
+| `audio/gadis/` | Suara Gadis | Opsi admin; aktif setelah semua file terisi |
+
+Pengaturan disimpan di `app_settings.voice_pack` (`default` | `ardi` | `gadis`). Admin: **Ganti Suara** (navbar / sidebar).
+
+Per paket, file wajib sama:
+
+`0.MP3`–`9.MP3`, `sepuluh.MP3`, `sebelas.MP3`, `belas.MP3`, `puluh.MP3`, `seratus.MP3`, `ratus.MP3`, `ribu.MP3`, `nomor-urut.MP3`, `loket.MP3`, `in.wav`
+
+Layar memutar dari `{baseUrl}/audio/{voice_pack}/...`; intro kustom tetap `audio/custom/intro.mp3`.
+
+### `audio/custom/`
+- `intro.mp3` — di-upload admin (jika ada, dipakai sebagai intro layar).
+- `outro.mp3` — bisa di-upload; **tidak** diputar di `playQueueAnnouncement`.
+
+### Lainnya saat pindah komputer
+- `database/antrian.sqlite`
+- `assets/img/backgrounds/`
 
 ---
 
-## 🏆 Milestone Proyek
+## API Utama
 
-1. **[Milestone 1] Refaktorisasi Tampilan Layar Utama**
-   - Menghapus gaya card putih vertikal, merapikan ukuran font angka antrian, memindahkan "Live Log Panggilan" ke bagian bawah di dalam kotak ringkasan loket, serta memperketat jarak spasial atas-bawah.
-2. **[Milestone 2] Peningkatan Kinerja Real-time**
-   - Mengurangi frekuensi *polling* antrian menjadi setiap 0.5 detik untuk respon layar & trigger suara panggilan instan.
-3. **[Milestone 3] Perbaikan API & Fitur Alias Loket**
-   - Memperbaiki bug impor helper pada pemanggilan antrian baru (`next.php`).
-   - Menyediakan fitur ubah alias loket langsung dari halaman operasional loket yang langsung ter-update secara real-time di layar publik display dan log aktivitas.
-4. **[Milestone 4] Overhaul Visual SaaS Light Mode & Aksen Ungu Royal**
-   - Mengubah keseluruhan arsitektur UI/UX dari tema gelap luar angkasa menjadi **SaaS Light Mode Premium Style** yang berkelas dan teratur.
-   - Mengintegrasikan warna **Ungu Royal SMKN 4 Surakarta** (`#7c3aed`, `#6d28d9`) secara konsisten melalui CSS variables dan bootstrap utility overrides.
-   - Menyempurnakan layout dashboard menu utama, konsol loket, monitor publik display, halaman login/register, dan panel admin master tanpa mengganggu fungsionalitas backend sama sekali.
-   - Mengoptimalkan ruang luar (padding/margin) dan ukuran grid di layar display publik agar pas secara proporsional dalam satu tampilan layar penuh (TV monitor/Full HD) tanpa memerlukan scroll.
-   - Menyediakan panel setelan interaktif floating (menggunakan localStorage) langsung di monitor display publik agar petugas dapat menyesuaikan nilai padding atas, bawah, kiri, dan kanan (range 0px - 100px) secara presisi di layar TV monitor di lapangan.
-   - Menambahkan efek sorot reaktif pulsing scale (`.loket-card-highlight`) pada loket yang sedang/baru saja memanggil antrian agar mencolok dan mudah dikenali oleh audiens publik.
-   - Mengimplementasikan pengaman transaksi database SQLite tingkat tinggi menggunakan **`BEGIN IMMEDIATE TRANSACTION`** pada file API panggilan (`api/next.php`) guna mengunci database saat ada dua loket memanggil di saat bersamaan, menjamin pembagian nomor antrian yang tertib dan unik tanpa duplikasi nomor.
-   - Merancang dan membangun **FIFO Audio Announcement Queue** pada sisi klien (`assets/js/main.js`) agar jika terjadi panggilan beruntun/simultan dari loket berbeda, suara pembacaan antrian akan diputar berurutan satu per satu dengan jeda natural tanpa saling tumpang tindih atau terputus di tengah jalan.
-   - Menempatkan **Live Log Panggilan** di bagian *bottom-center* dalam wadah besar Ringkasan Loket, disajikan dengan tata letak minimalis horizontal satu baris yang mepet (jarak vertikal ramping 6px).
-   - Menyederhanakan tampilan **Live Log Panggilan** dengan tata letak vertikal yang rapi di bawah judulnya, membatasi riwayat panggilan maksimal 2 entri (`max 2`), didekorasi dengan ikon peluru bulat Lucide ungu royal dan lencana waktu kecil yang sangat estetis.
-   - Menyediakan modul unggah Foto Profil (Photo Profil / Avatar) untuk masing-masing loket di sisi operasional petugas, yang otomatis diproses lewat PHP GD library (auto-resize max 800px, auto-flatten alpha, dan auto-compress JPEG 80% quality). Foto profil ini disajikan secara presisi sebagai avatar bulat berbingkai ungu dengan efek bayangan halus pada layar publik TV display dan pojok kanan atas konsol loket untuk mendukung arsitektur SaaS yang sangat modern dan ergonomis.
-5. **[Milestone 5] Perbaikan Audio, Panggil Ulang & Sinkronisasi Status**
-   - **Percepatan & Pembersihan Audio**: Menghapus audio outro sepenuhnya dari rangkaian suara pemanggilan dan menyisakan hanya audio intro (Airport Bell). Mengurangi interval penyambungan segmen suara dari `120ms` menjadi `50ms` serta interval antar antrian dari `600ms` menjadi `300ms` di client-side JS (`assets/js/main.js`) untuk menghasilkan pengumuman audio yang instan, mengalir cepat, dan natural.
-   - **Fitur Panggil Ulang (Recall)**: Menambahkan tombol "Panggil Ulang" dengan layout flex vertikal yang elegan di sisi operasional petugas (`views/loket.php`), dihias dengan gaya *ghost button* beraksen ungu lembut (`rgba(124, 58, 237, 0.04)`) yang responsif, serta dihubungkan secara AJAX asinkron ke backend `/api/recall.php` yang aman dari konflik database.
-   - **Sinkronisasi Foto Profil & Status Layar Publik**: Menyempurnakan API status `/api/status.php` untuk memetakan seluruh loket terdaftar dari database (termasuk yang belum pernah memanggil) dan menyematkan `background_url` yang ter-cache-bust (`?v=timestamp`). Menyajikan data tersebut sebagai Foto Profil (Avatar) berbingkai ungu bulat yang responsif dan tersinkronisasi di layar monitor TV publik display.
-6. **[Milestone 6] Transisi ke Konsep Foto Profil (Avatar)**
-   - Mengubah arsitektur tampilan kartu loket di layar display publik dari yang sebelumnya menggunakan gambar latar belakang penuh (background cover) menjadi arsitektur SaaS modular dengan menyematkan Foto Profil bulat (circular avatar) di atas nomor antrean, menjaga keterbacaan tingkat tinggi secara absolut.
-   - Menyempurnakan header operasional petugas di `views/loket.php` dengan tata letak flex-horizontal interaktif yang menampilkan bingkai bulat avatar petugas di sisi kanan panel utama.
-7. **[Milestone 7] Manajemen Foto Profil dari Admin & URL Bersih**
-   - **Manajemen Foto Profil Terpusat**: Memperkuat panel admin master (`views/admin.php`) agar admin dapat langsung mengunggah, mengubah, dan menghapus foto profil (avatar) masing-masing loket dari dropdown aksi di tabel daftar loket.
-   - **Penamaan File Berbasis User ID**: Mentransisikan penamaan file gambar profil dari `loket_{index}.jpg` (rentan tertukar saat loket ditambah/dihapus) menjadi `loket_uid_{id}.jpg` yang diikat langsung ke `id` unik akun pengguna di database. Semua titik akses (API status, upload, delete, views) sudah diperbarui dengan fallback ke file legacy untuk menjaga kompatibilitas mundur.
-   - **Migrasi URL Bersih (Clean URLs)**: Menghapus seluruh referensi URL lama `index.php?page=...` di seluruh codebase (admin.php, loket.php, menu.php, login.php, register.php, logout.php, helpers.php, API redirect) dan menggantinya dengan URL bersih (`/admin`, `/menu`, `/layar`, `/login`, `/register`, `/logout`, `/loket?loket=N`).
+| Endpoint | Metode | CSRF | Fungsi |
+|----------|--------|------|--------|
+| `api/status.php` | GET | — | State + loket + history; `?peek=1` tidak reset `panggil` |
+| `api/next.php` | POST | Ya | Nomor antrian +1, set `panggil=1` |
+| `api/recall.php` | POST | Ya | Panggil ulang nomor terakhir loket |
+| `api/reset.php` | POST | Ya | Reset antrian (admin) |
+| `api/update_loket_alias.php` | POST | Ya | Ubah alias loket |
+| `api/upload_loket_bg.php` | POST | Ya | Upload avatar |
+| `api/delete_loket_bg.php` | POST | Ya | Hapus avatar |
+| `api/stream.php` | GET | — | SSE alternatif; **layar saat ini memakai polling**, bukan stream |
 
-8. **[Milestone 8] Hardening Operasional Lokal**
-   - Menjaga slot loket tetap stabil melalui kolom `loket_number` agar operasi 8 loket tidak bentrok saat ada penambahan atau pengurangan loket.
-   - Menonaktifkan registrasi publik dan mengarahkan seluruh manajemen akun loket ke panel admin.
-   - Menambahkan proteksi CSRF pada semua aksi tulis yang sensitif.
+---
 
-9. **[Milestone 9] Perbaikan Kompatibilitas Deployment Subfolder (Audio & API)**
-   - **Root Cause**: Semua path audio dan beberapa URL API di `assets/js/main.js` di-hardcode sebagai path absolut dari root server (contoh: `/audio/belas.MP3`, `/api/status.php`). Akibatnya, audio tidak berfungsi dan API gagal saat diakses via subfolder (misal: `http://192.168.20.44/antriv2/layar`).
-   - **Solusi**: Menyuntikkan `antrian_base_url()` sebagai `data-base-url` attribute di tag `<body>` pada seluruh view (`layar.php`, `loket.php`, `admin.php`), lalu menggunakan `body.dataset.baseUrl` sebagai prefix di semua path JS yang sebelumnya hardcoded:
-     - `audioBasePath`: `/audio` → `{baseUrl}/audio`
-     - `refreshLoketStatus`: `/api/status.php` → `{baseUrl}/api/status.php`
-     - Redirect loket: `/loket?loket=N` → `{baseUrl}/loket?loket=N`
-     - Update alias: `/api/update_loket_alias.php` → `{baseUrl}/api/update_loket_alias.php`
-   - **Juga diperbaiki**: Path audio kustom di `auth/helpers.php` (`intro_audio_url`, `outro_audio_url`) yang sebelumnya hardcode `/audio/custom/...` kini menggunakan `antrian_base_url()` prefix.
+## Milestone (riwayat)
+
+1. **Layar & log** — Log di bawah papan loket; layout display dioptimalkan TV.
+2. **Real-time** — Polling 0,5 detik.
+3. **Alias loket** — Edit dari konsol loket + sinkron layar.
+4. **SaaS light + ungu** — Tema baru, highlight loket aktif, transaksi SQLite, FIFO audio, avatar, padding layar (localStorage).
+5. **Audio & recall** — Outro dihapus dari pemutaran layar; tombol panggil ulang; status lengkap semua loket + avatar di API.
+6. **Avatar** — Ganti background penuh menjadi foto bulat.
+7. **Admin avatar + clean URL** — `loket_uid_{id}.jpg`; URL tanpa `index.php?page=`.
+8. **Hardening** — `loket_number`, registrasi mati, CSRF.
+9. **Subfolder** — `data-base-url` untuk audio dan API di JS.
+10. **Operasional saat ini** — Beranda = admin; menu landing tidak di-route; vendor & audio lokal wajib; skrip `scripts/setup-assets.ps1` untuk cek deploy.
+11. **Paket suara** — `audio/default`, `audio/ardi`, `audio/gadis`; pilihan di Admin → Ganti Suara; kolom `app_settings.voice_pack`.
+
+---
+
+## Catatan untuk sesi AI berikutnya
+
+- Jangan mengaktifkan `/menu` kecuali user meminta landing terpisah.
+- Setelah login: admin → `/admin`, loket → `/loket?loket={loket_number}`.
+- Jangan hardcode path `/audio/...` atau `/api/...` di JS tanpa `dataset.baseUrl`.
+- Saat menambah aksi tulis baru, wajib `antrian_require_csrf()`.

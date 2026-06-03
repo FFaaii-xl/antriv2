@@ -30,6 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'Loket baru dibuat: ' . $newLoket['username'] . ' dan slot disesuaikan otomatis.'];
         }
 
+        if ($action === 'update_voice_pack') {
+            $pack = antrian_normalize_voice_pack((string) ($_POST['voice_pack'] ?? ''));
+            antrian_update_voice_pack($pack);
+            $catalog = antrian_voice_packs_catalog();
+            $label = $catalog[$pack]['label'] ?? $pack;
+            $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'Paket suara diubah ke: ' . $label . '.'];
+        }
+
         if ($action === 'update_settings') {
             $queueStart = filter_input(INPUT_POST, 'queue_start', FILTER_VALIDATE_INT);
             $currentQueue = filter_input(INPUT_POST, 'current_queue', FILTER_VALIDATE_INT);
@@ -179,6 +187,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $searchQuery = (string) ($_GET['q'] ?? '');
 $settings = antrian_app_settings();
+$voicePackCatalog = antrian_voice_packs_catalog();
+$voicePackOptions = [];
+
+foreach (antrian_voice_pack_slugs() as $slug) {
+    $meta = $voicePackCatalog[$slug] ?? ['label' => $slug, 'description' => ''];
+    $voicePackOptions[$slug] = array_merge($meta, [
+        'slug' => $slug,
+        'ready' => antrian_voice_pack_is_ready($slug),
+        'selected' => $settings['voice_pack'] === $slug,
+    ]);
+}
+
 $state = antrian_state();
 $loketAccounts = antrian_loket_accounts();
 $loketLastCalls = antrian_loket_last_calls();
@@ -389,6 +409,9 @@ unset($_SESSION['admin_notice']);
             <a class="button button-ghost" href="<?= antrian_base_url() ?>/layar" target="_blank" style="padding: 10px 16px; border-radius: 12px;">
                 <i data-lucide="monitor" style="width: 16px; height: 16px;"></i> Buka Layar
             </a>
+            <button class="button button-ghost" id="openVoiceBtn" style="padding: 10px 16px; border-radius: 12px;">
+                <i data-lucide="volume-2" style="width: 16px; height: 16px;"></i> Ganti Suara
+            </button>
             <button class="button button-ghost" id="openSettingsBtn" style="padding: 10px 16px; border-radius: 12px;">
                 <i data-lucide="settings" style="width: 16px; height: 16px;"></i> Pengaturan
             </button>
@@ -435,6 +458,21 @@ unset($_SESSION['admin_notice']);
                     <?= htmlspecialchars($notice['message'], ENT_QUOTES, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
+
+            <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
+                <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="volume-2" class="text-primary" style="width: 18px; height: 18px;"></i> Paket Suara Aktif
+                </h2>
+                <p style="margin: 0; font-size: 0.92rem; color: var(--text); font-weight: 700;">
+                    <?= htmlspecialchars((string) $settings['voice_pack_label'], ENT_QUOTES, 'UTF-8') ?>
+                </p>
+                <p style="margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.45;">
+                    Folder: <code style="font-size: 0.78rem;">audio/<?= htmlspecialchars((string) $settings['voice_pack'], ENT_QUOTES, 'UTF-8') ?>/</code>
+                </p>
+                <button class="button button-ghost" type="button" id="openVoiceBtnSidebar" style="width: 100%; border-radius: 12px; padding: 12px;">
+                    <i data-lucide="mic" style="width: 16px; height: 16px;"></i> Ganti Suara
+                </button>
+            </div>
 
             <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
                 <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -535,6 +573,72 @@ unset($_SESSION['admin_notice']);
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Voice Pack Modal -->
+    <div class="modal-overlay" id="voiceModal">
+        <div class="modal-content" style="position: relative; max-width: 520px;">
+            <button class="modal-close" type="button" id="closeVoiceBtn"><i data-lucide="x" style="width: 24px; height: 24px;"></i></button>
+            <h2 style="font-weight: 800; margin-bottom: 8px; font-size: 1.4rem;">Ganti Suara Panggilan</h2>
+            <p style="margin: 0 0 20px; font-size: 0.9rem; color: var(--muted); line-height: 1.5;">
+                Pilih paket suara untuk layar display dan pemanggilan antrian. File disimpan per folder di <code>audio/{paket}/</code>.
+            </p>
+
+            <form method="post" action="<?= antrian_base_url() ?>/admin">
+                <input type="hidden" name="action" value="update_voice_pack">
+                <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                <?= antrian_csrf_hidden_input() ?>
+
+                <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+                    <?php foreach ($voicePackOptions as $option): ?>
+                        <?php
+                            $inputId = 'voice_pack_' . $option['slug'];
+                            $disabled = !$option['ready'];
+                        ?>
+                        <label for="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>" style="display: block; cursor: <?= $disabled ? 'not-allowed' : 'pointer' ?>; margin: 0;">
+                            <div style="padding: 16px 18px; border-radius: 16px; border: 2px solid <?= $option['selected'] ? 'var(--accent)' : 'rgba(124, 58, 237, 0.12)' ?>; background: <?= $option['selected'] ? 'rgba(124, 58, 237, 0.06)' : '#fff' ?>; opacity: <?= $disabled ? '0.72' : '1' ?>;">
+                                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                    <input
+                                        type="radio"
+                                        name="voice_pack"
+                                        id="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>"
+                                        value="<?= htmlspecialchars($option['slug'], ENT_QUOTES, 'UTF-8') ?>"
+                                        <?= $option['selected'] ? 'checked' : '' ?>
+                                        <?= $disabled ? 'disabled' : '' ?>
+                                        style="margin-top: 4px; accent-color: var(--accent);"
+                                    >
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <strong style="font-size: 1rem; color: var(--text);"><?= htmlspecialchars($option['label'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <?php if ($option['selected']): ?>
+                                                <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: var(--accent); color: #fff; padding: 3px 10px; border-radius: 99px;">Aktif</span>
+                                            <?php endif; ?>
+                                            <?php if ($disabled): ?>
+                                                <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(245, 158, 11, 0.15); color: #b45309; padding: 3px 10px; border-radius: 99px;">Sedang proses rekaman</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <p style="margin: 6px 0 0; font-size: 0.84rem; color: var(--muted); line-height: 1.45;">
+                                            <?= htmlspecialchars($option['description'], ENT_QUOTES, 'UTF-8') ?>
+                                        </p>
+                                        <p style="margin: 6px 0 0; font-size: 0.78rem; color: var(--muted); font-family: monospace;">
+                                            audio/<?= htmlspecialchars($option['slug'], ENT_QUOTES, 'UTF-8') ?>/
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+
+                <p style="font-size: 0.82rem; color: var(--muted); margin: 0 0 16px; line-height: 1.45;">
+                    Untuk <strong>Suara Ardi</strong> dan <strong>Suara Gadis</strong>, salin file MP3/WAV yang sama seperti di <code>audio/default/</code> ke folder masing-masing setelah rekaman selesai.
+                </p>
+
+                <button class="button button-primary" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">
+                    Simpan Pilihan Suara
+                </button>
+            </form>
         </div>
     </div>
 
@@ -651,20 +755,42 @@ unset($_SESSION['admin_notice']);
 
         // Modal Logic
         const settingsModal = document.getElementById('settingsModal');
+        const voiceModal = document.getElementById('voiceModal');
         const openSettingsBtn = document.getElementById('openSettingsBtn');
         const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const openVoiceBtn = document.getElementById('openVoiceBtn');
+        const openVoiceBtnSidebar = document.getElementById('openVoiceBtnSidebar');
+        const closeVoiceBtn = document.getElementById('closeVoiceBtn');
+
+        function openVoiceModal() {
+            voiceModal.classList.add('active');
+            lucide.createIcons();
+        }
 
         openSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('active');
         });
 
+        openVoiceBtn.addEventListener('click', openVoiceModal);
+        openVoiceBtnSidebar.addEventListener('click', openVoiceModal);
+
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('active');
+        });
+
+        closeVoiceBtn.addEventListener('click', () => {
+            voiceModal.classList.remove('active');
         });
 
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
                 settingsModal.classList.remove('active');
+            }
+        });
+
+        voiceModal.addEventListener('click', (e) => {
+            if (e.target === voiceModal) {
+                voiceModal.classList.remove('active');
             }
         });
 
