@@ -17,14 +17,24 @@ require __DIR__ . '/../auth/helpers.php';
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
     <style>
+        html, body {
+            overflow: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        html::-webkit-scrollbar, body::-webkit-scrollbar {
+            display: none !important;
+        }
         .page-display {
             background: linear-gradient(135deg, #fbfdff 0%, #f4f0fa 100%);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            width: 100% !important;
-            max-width: 100% !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
         .broadcast-bar {
             background: #ffffff;
@@ -35,6 +45,7 @@ require __DIR__ . '/../auth/helpers.php';
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
         .loket-board-main {
             background: rgba(255, 255, 255, 0.6);
@@ -43,12 +54,19 @@ require __DIR__ . '/../auth/helpers.php';
             box-shadow: 0 20px 60px rgba(124, 58, 237, 0.05);
             border-radius: 32px;
             width: 100%;
+            flex: 1;
+            overflow: hidden;
         }
         .display-stage {
             flex: 1;
             padding: 0 16px 16px 16px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        .display-stage-tv {
+            flex: 1;
+            overflow: hidden;
         }
         .pulse-glow {
             animation: pulseGlow 2s infinite alternate;
@@ -59,7 +77,7 @@ require __DIR__ . '/../auth/helpers.php';
         }
     </style>
 </head>
-<body class="app-shell app-display" data-base-url="<?= antrian_base_url() ?>" data-role="display" data-status-url="<?= antrian_base_url() ?>/api/status.php">
+<body class="app-shell app-display" data-base-url="<?= antrian_base_url() ?>" data-role="display" data-status-url="<?= antrian_base_url() ?>/api/status.php" style="overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important;">
 
     <!-- Audio Unlock Overlay -->
     <div id="audioUnlockOverlay" style="position: fixed; inset: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center;">
@@ -123,15 +141,26 @@ require __DIR__ . '/../auth/helpers.php';
     </main>
 
     <!-- Floating Settings Trigger -->
-    <button id="displaySettingsToggle" class="button button-ghost" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; border-radius: 999px !important; width: 48px; height: 48px; padding: 0; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.15) !important; border-color: rgba(124, 58, 237, 0.20) !important; background: white;">
+    <button id="displaySettingsToggle" class="button button-ghost" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; border-radius: 999px !important; width: 48px; height: 48px; padding: 0; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.15) !important; border-color: rgba(124, 58, 237, 0.20) !important; background: white; touch-action: manipulation;">
         <i data-lucide="settings" style="width: 20px; height: 20px;"></i>
     </button>
 
+    <!-- Kiosk Mode Button -->
+    <button id="kioskModeToggle" class="button button-ghost" style="position: fixed; bottom: 80px; right: 20px; z-index: 1000; border-radius: 999px !important; width: 48px; height: 48px; padding: 0; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.15) !important; border-color: rgba(124, 58, 237, 0.20) !important; background: white; touch-action: manipulation;" title="Kiosk Mode (Fullscreen)">
+        <i data-lucide="maximize-2" id="kioskIcon" style="width: 20px; height: 20px;"></i>
+    </button>
+
+    <!-- Kiosk Exit Button (hidden initially) -->
+    <button id="kioskExitBtn" class="button button-ghost" style="position: fixed; top: 20px; right: 20px; z-index: 1001; border-radius: 12px !important; padding: 10px 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important; background: rgba(0,0,0,0.7) !important; color: white !important; border: none !important; display: none;">
+        <i data-lucide="x" style="width: 16px; height: 16px; margin-right: 6px;"></i> Keluar Kiosk
+    </button>
+
     <!-- Floating Settings Panel -->
-    <div id="displaySettingsPanel" class="panel-card" style="display: none; position: fixed; bottom: 80px; right: 20px; z-index: 1000; width: 320px; padding: 20px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15) !important; border-color: rgba(124, 58, 237, 0.16) !important; background: white;">
+    <div id="displaySettingsPanel" class="panel-card" style="display: none; position: fixed; bottom: 80px; right: 20px; z-index: 1000; width: 340px; max-width: calc(100vw - 40px); max-height: 60vh; overflow-y: auto; padding: 20px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15) !important; border-color: rgba(124, 58, 237, 0.16) !important; background: white; touch-action: manipulation;">
         <h3 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: var(--text);">
-            <i data-lucide="sliders" class="text-primary" style="width: 18px; height: 18px;"></i> Atur Padding Layar
+            <i data-lucide="sliders" class="text-primary" style="width: 18px; height: 18px;"></i> Pengaturan Padding
         </h3>
+
         <div style="display: grid; gap: 12px;">
             <div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px;">
@@ -167,14 +196,105 @@ require __DIR__ . '/../auth/helpers.php';
         </div>
     </div>
 
+    <!-- Mobile Responsive: Settings Panel - same position on all screens -->
+    <style>
+        @media (max-width: 480px) {
+            #displaySettingsPanel {
+                max-height: 50vh;
+            }
+        }
+        /* Close button for mobile bottom sheet */
+        #displaySettingsPanel::before {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 4px;
+            background: rgba(124, 58, 237, 0.2);
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+    </style>
+
     <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
     <script>
         lucide.createIcons();
 
+        // Kiosk Mode Logic
+        (function() {
+            const kioskToggle = document.getElementById('kioskModeToggle');
+            const kioskExitBtn = document.getElementById('kioskExitBtn');
+            const kioskIcon = document.getElementById('kioskIcon');
+            const displaySettingsToggle = document.getElementById('displaySettingsToggle');
+            const displaySettingsPanel = document.getElementById('displaySettingsPanel');
+            let isKioskMode = false;
+
+            function enterKioskMode() {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().then(() => {
+                        isKioskMode = true;
+                        updateKioskUI();
+                    }).catch(err => {
+                        console.log('Fullscreen error:', err);
+                    });
+                }
+            }
+
+            function exitKioskMode() {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().then(() => {
+                        isKioskMode = false;
+                        updateKioskUI();
+                    }).catch(err => {
+                        console.log('Exit fullscreen error:', err);
+                    });
+                } else {
+                    isKioskMode = false;
+                    updateKioskUI();
+                }
+            }
+
+            function updateKioskUI() {
+                if (isKioskMode) {
+                    kioskIcon.setAttribute('data-lucide', 'minimize-2');
+                    kioskExitBtn.style.display = 'flex';
+                    kioskExitBtn.style.alignItems = 'center';
+                    displaySettingsToggle.style.display = 'none';
+                    displaySettingsPanel.style.display = 'none';
+                } else {
+                    kioskIcon.setAttribute('data-lucide', 'maximize-2');
+                    kioskExitBtn.style.display = 'none';
+                    displaySettingsToggle.style.display = '';
+                }
+                lucide.createIcons();
+            }
+
+            if (kioskToggle) {
+                kioskToggle.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        enterKioskMode();
+                    } else {
+                        exitKioskMode();
+                    }
+                });
+            }
+
+            if (kioskExitBtn) {
+                kioskExitBtn.addEventListener('click', exitKioskMode);
+            }
+
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    isKioskMode = false;
+                    updateKioskUI();
+                }
+            });
+        })();
+
+        // Display Settings Logic
         (function() {
             const toggle = document.getElementById('displaySettingsToggle');
             const panel = document.getElementById('displaySettingsPanel');
-            const body = document.querySelector('.page-display'); // Apply to the container rather than body which has flex now
+            const body = document.querySelector('.page-display');
 
             const inTop = document.getElementById('inputPadTop');
             const inBottom = document.getElementById('inputPadBottom');

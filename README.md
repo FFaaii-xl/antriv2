@@ -7,8 +7,8 @@ AntriV2 adalah aplikasi antrian lokal untuk 8 loket yang bekerja di jaringan yan
 - Menu utama.
 - Panel admin untuk mengatur loket.
 - Halaman loket untuk memanggil nomor.
-- Layar display publik.
-- Audio panggilan antrian.
+- Layar display publik (fullscreen, tanpa scroll).
+- Audio panggilan antrian (file MP3).
 - Alias loket dan foto profil loket.
 - Database SQLite lokal.
 
@@ -48,8 +48,6 @@ AntriV2 adalah aplikasi antrian lokal untuk 8 loket yang bekerja di jaringan yan
 ```bash
 php -S localhost:8000
 ```
-
-4. Buka browser ke `http://localhost:8000/`.
 
 ## Mengakses Antrean via HP / Jaringan Lokal (Universal)
 
@@ -107,6 +105,24 @@ http://192.168.1.10/antriv2/loket?loket=3
 ```
 
 6. Loket bisa ditambah atau dikurangi tanpa mengubah nomor loket yang sudah ada.
+
+## Paket Suara
+
+Aplikasi mendukung beberapa opsi suara:
+
+| Paket | Keterangan |
+|-------|------------|
+| Suara Default | File MP3 di `audio/default/` |
+| Suara Ardi | File MP3 di `audio/ardi/` |
+| Suara Gadis | File MP3 di `audio/gadis/` |
+
+Pilih paket suara dari panel Admin → **Ganti Suara**.
+
+### Paket Suara (File MP3)
+
+Pastikan folder berisi file-file ini:
+
+`0.MP3`–`9.MP3`, `sepuluh.MP3`, `sebelas.MP3`, `belas.MP3`, `puluh.MP3`, `seratus.MP3`, `ratus.MP3`, `ribu.MP3`, `nomor-urut.MP3`, `loket.MP3`, `in.wav`
 
 ## File Tampilan yang Disimpan Lokal
 

@@ -471,7 +471,7 @@ function antrian_update_voice_pack(string $pack): void
 
 function antrian_app_settings(): array
 {
-    $statement = antrian_db()->query('SELECT id, queue_start, display_cols, display_rows, voice_pack FROM app_settings WHERE id = 1 LIMIT 1');
+    $statement = antrian_db()->query('SELECT id, queue_start, display_cols, display_rows, voice_pack, ai_speed, ai_pitch, ai_voice_id FROM app_settings WHERE id = 1 LIMIT 1');
     $settings = $statement ? $statement->fetch() : false;
     $audioInfo = antrian_announcement_audio_info();
     $voicePack = antrian_get_voice_pack();
@@ -483,6 +483,9 @@ function antrian_app_settings(): array
         'display_cols' => 4,
         'display_rows' => 2,
         'voice_pack' => 'default',
+        'ai_speed' => 1.0,
+        'ai_pitch' => 1.0,
+        'ai_voice_id' => 'id-ID',
     ], $audioInfo, [
         'voice_pack' => $voicePack,
         'voice_pack_label' => $catalog[$voicePack]['label'] ?? 'Suara Default',
@@ -513,6 +516,9 @@ function antrian_api_settings_payload(): array
         'voice_pack' => (string) $settings['voice_pack'],
         'voice_pack_label' => (string) $settings['voice_pack_label'],
         'voice_pack_base_path' => (string) $settings['voice_pack_base_path'],
+        'ai_speed' => (float) ($settings['ai_speed'] ?? 1.0),
+        'ai_pitch' => (float) ($settings['ai_pitch'] ?? 1.0),
+        'ai_voice_id' => (string) ($settings['ai_voice_id'] ?? 'id-ID'),
     ];
 }
 
@@ -624,4 +630,16 @@ function antrian_update_state_values(int $antrian, ?int $loket = null, ?int $pan
 
     $statement = antrian_db()->prepare('UPDATE state SET ' . implode(', ', $parts) . ' WHERE id = 1');
     $statement->execute($parameters);
+}
+
+function antrian_update_ai_settings(float $speed, float $pitch, string $voiceId): void
+{
+    $statement = antrian_db()->prepare(
+        'UPDATE app_settings SET ai_speed = :ai_speed, ai_pitch = :ai_pitch, ai_voice_id = :ai_voice_id WHERE id = 1'
+    );
+    $statement->execute([
+        'ai_speed' => max(0.5, min(2.0, $speed)),
+        'ai_pitch' => max(0.5, min(2.0, $pitch)),
+        'ai_voice_id' => trim($voiceId),
+    ]);
 }

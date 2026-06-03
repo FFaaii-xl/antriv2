@@ -582,10 +582,10 @@ unset($_SESSION['admin_notice']);
             <button class="modal-close" type="button" id="closeVoiceBtn"><i data-lucide="x" style="width: 24px; height: 24px;"></i></button>
             <h2 style="font-weight: 800; margin-bottom: 8px; font-size: 1.4rem;">Ganti Suara Panggilan</h2>
             <p style="margin: 0 0 20px; font-size: 0.9rem; color: var(--muted); line-height: 1.5;">
-                Pilih paket suara untuk layar display dan pemanggilan antrian. File disimpan per folder di <code>audio/{paket}/</code>.
+                Pilih paket suara untuk layar display dan pemanggilan antrian.
             </p>
 
-            <form method="post" action="<?= antrian_base_url() ?>/admin">
+            <form method="post" action="<?= antrian_base_url() ?>/admin" id="voicePackForm">
                 <input type="hidden" name="action" value="update_voice_pack">
                 <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
                 <?= antrian_csrf_hidden_input() ?>
@@ -615,7 +615,7 @@ unset($_SESSION['admin_notice']);
                                                 <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: var(--accent); color: #fff; padding: 3px 10px; border-radius: 99px;">Aktif</span>
                                             <?php endif; ?>
                                             <?php if ($disabled): ?>
-                                                <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(245, 158, 11, 0.15); color: #b45309; padding: 3px 10px; border-radius: 99px;">Sedang proses rekaman</span>
+                                                <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(245, 158, 11, 0.15); color: #b45309; padding: 3px 10px; border-radius: 99px;">Belum lengkap</span>
                                             <?php endif; ?>
                                         </div>
                                         <p style="margin: 6px 0 0; font-size: 0.84rem; color: var(--muted); line-height: 1.45;">
@@ -631,11 +631,7 @@ unset($_SESSION['admin_notice']);
                     <?php endforeach; ?>
                 </div>
 
-                <p style="font-size: 0.82rem; color: var(--muted); margin: 0 0 16px; line-height: 1.45;">
-                    Untuk <strong>Suara Ardi</strong> dan <strong>Suara Gadis</strong>, salin file MP3/WAV yang sama seperti di <code>audio/default/</code> ke folder masing-masing setelah rekaman selesai.
-                </p>
-
-                <button class="button button-primary" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">
+                <button class="button button-primary" type="submit" id="voiceSaveBtn" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">
                     Simpan Pilihan Suara
                 </button>
             </form>

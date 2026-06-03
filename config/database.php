@@ -241,6 +241,34 @@ function antrian_db(): PDO
         $pdo->exec("ALTER TABLE app_settings ADD COLUMN voice_pack TEXT NOT NULL DEFAULT 'default'");
     }
 
+    // Add AI voice settings columns
+    $settingsColumns = $pdo->query('PRAGMA table_info(app_settings)')->fetchAll();
+    $hasAiVoiceColumn = false;
+    $hasAiSpeedColumn = false;
+    $hasAiPitchColumn = false;
+    $hasAiVoiceIdColumn = false;
+
+    foreach ($settingsColumns as $column) {
+        $columnName = (string) $column['name'];
+        if ($columnName === 'ai_voice_enabled') $hasAiVoiceColumn = true;
+        if ($columnName === 'ai_speed') $hasAiSpeedColumn = true;
+        if ($columnName === 'ai_pitch') $hasAiPitchColumn = true;
+        if ($columnName === 'ai_voice_id') $hasAiVoiceIdColumn = true;
+    }
+
+    if (!$hasAiVoiceColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN ai_voice_enabled INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!$hasAiSpeedColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN ai_speed REAL NOT NULL DEFAULT 1.0');
+    }
+    if (!$hasAiPitchColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN ai_pitch REAL NOT NULL DEFAULT 1.0');
+    }
+    if (!$hasAiVoiceIdColumn) {
+        $pdo->exec('ALTER TABLE app_settings ADD COLUMN ai_voice_id TEXT NOT NULL DEFAULT "id-ID"');
+    }
+
     antrian_db_migrate_audio_packs();
 
     if (!$hasQueueStartColumn || !$hasIntroColumn || !$hasOutroColumn) {

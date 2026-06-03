@@ -11,7 +11,7 @@ AntriV2 adalah sistem antrian lokal **PHP 8.1+ + SQLite** untuk banyak loket (co
 | Peran | URL | Keterangan |
 |--------|-----|------------|
 | Beranda / admin | `/` atau `/admin` | Panel master (perlu login admin) |
-| Layar publik | `/layar` | TV display + audio FIFO |
+| Layar publik | `/layar` | TV display + audio FIFO (fullscreen, no scroll) |
 | Loket petugas | `/loket?loket=N` | Next, panggil ulang, alias, foto profil |
 | Login | `/login` | Redirect: admin → `/admin`, loket → `/loket?loket=N` |
 | Register | `/register` | Dinonaktifkan (hanya pesan + link login) |
@@ -53,13 +53,15 @@ Verifikasi aset: `powershell -ExecutionPolicy Bypass -File scripts/setup-assets.
    Tema terang premium: latar `#fdfaff` / `#fbfdff`, aksen `#7c3aed` / `#6d28d9`, kartu putih, bayangan halus. Bukan tema gelap lama.
 
 2. **Layar display tanpa scroll (TV / Full HD)**  
-   Grid loket dari `display_cols` × `display_rows` (default 4×2). Panel floating **Atur Padding Layar** (localStorage, range **0–200 px** per sisi).
+   Grid loket dari `display_cols` × `display_rows` (default 4×2). Panel floating **Pengaturan Tampilan** (localStorage):
+   - Padding: range **0–200 px** per sisi
+   - AI Voice: Model suara, Bahasa, Kecepatan
 
 3. **Live Log Panggilan**  
    Di bagian bawah papan loket (`#activityLog`), tata letak **horizontal** satu baris. Data dari `call_history` (API mengembalikan **hingga 20** entri terbaru); JS menampilkan seluruh daftar yang dikirim (bukan dibatasi 2 di UI).
 
 4. **Polling 0,5 detik + `peek=true`**  
-   `assets/js/main.js`: `setInterval(..., 500)` untuk layar, admin, dan loket. Layar/admin/loket memakai `peek=true` agar flag `panggil` tidak “dimakan” oleh panel yang bukan pemutar audio utama. Layar mendeteksi panggilan baru lewat peningkatan `id` di `call_history`, lalu mengantre audio FIFO.
+   `assets/js/main.js`: `setInterval(..., 500)` untuk layar, admin, dan loket. Layar/admin/loket memakai `peek=true` agar flag `panggil` tidak "dimakan" oleh panel yang bukan pemutar audio utama. Layar mendeteksi panggilan baru lewat peningkatan `id` di `call_history`, lalu mengantre audio FIFO.
 
 5. **Penamaan loket**  
    Primer: **Loket N** (`loket_number`, 1-based). Alias kustom sekunder (kurung / baris di bawah).
@@ -77,9 +79,10 @@ Verifikasi aset: `powershell -ExecutionPolicy Bypass -File scripts/setup-assets.
    File: `assets/img/backgrounds/loket_uid_{user_id}.jpg` (fallback `loket_{loket_number}.jpg`). Upload GD: resize max 800px, JPEG ~80%.
 
 10. **Audio pemanggilan & paket suara**  
-    - Segmen terbilang dari `audio/{voice_pack}/` (`default`, `ardi`, `gadis`). Pilihan di Admin → **Ganti Suara**; disimpan di `app_settings.voice_pack`.  
+    - Segmen MP3 dari `audio/{voice_pack}/` (`default`, `ardi`, `gadis`).  
+    - Pilihan di Admin → **Ganti Suara**; disimpan di `app_settings.voice_pack`.
     - Rangkaian di layar: **intro** (`custom/intro.mp3` atau fallback `in.wav` di paket aktif) → `nomor-urut.MP3` → digit → `loket.MP3` → digit loket.  
-    - **Outro tidak diputar** di rangkaian layar (meski admin masih bisa upload `outro.mp3`).  
+    - **Outro tidak diputar** di rangkaian layar (meski admin masih bisa upload `outro.mp3`).
     - Antrean FIFO; jeda antar antrean **300 ms**.  
     - Konkureksi nomor: `BEGIN IMMEDIATE TRANSACTION` di `api/next.php` dan `api/recall.php`.
 
@@ -118,7 +121,11 @@ CREATE TABLE app_settings (
     outro_text TEXT NOT NULL,
     queue_start INTEGER NOT NULL DEFAULT 1,
     display_cols INTEGER NOT NULL DEFAULT 4,
-    display_rows INTEGER NOT NULL DEFAULT 2
+    display_rows INTEGER NOT NULL DEFAULT 2,
+    voice_pack TEXT NOT NULL DEFAULT 'default',
+    ai_speed REAL NOT NULL DEFAULT 1.0,
+    ai_pitch REAL NOT NULL DEFAULT 1.0,
+    ai_voice_id TEXT NOT NULL DEFAULT 'id-ID'
 );
 ```
 
@@ -180,7 +187,7 @@ Seed awal (jika DB kosong): `admin` / `admin123`, `loket` / `loket123` — **gan
 
 Pengaturan disimpan di `app_settings.voice_pack` (`default` | `ardi` | `gadis`). Admin: **Ganti Suara** (navbar / sidebar).
 
-Per paket, file wajib sama:
+Per paket MP3, file wajib sama:
 
 `0.MP3`–`9.MP3`, `sepuluh.MP3`, `sebelas.MP3`, `belas.MP3`, `puluh.MP3`, `seratus.MP3`, `ratus.MP3`, `ribu.MP3`, `nomor-urut.MP3`, `loket.MP3`, `in.wav`
 
