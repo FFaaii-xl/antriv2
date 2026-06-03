@@ -45,7 +45,7 @@ $csrfToken = antrian_csrf_token();
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
 </head>
-<body class="app-shell app-loket app-admin" data-role="loket" data-next-base-url="<?= antrian_base_url() ?>/api/next.php" data-loket="<?= $loket ?>" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+<body class="app-shell app-loket app-admin" data-role="loket" data-base-url="<?= antrian_base_url() ?>" data-next-base-url="<?= antrian_base_url() ?>/api/next.php" data-loket="<?= $loket ?>" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <nav class="admin-navbar" style="display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 16px;">
             <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo" style="width: 36px; height: 36px;">

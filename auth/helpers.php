@@ -408,12 +408,14 @@ function antrian_announcement_audio_info(): array
     $introPath = $directory . '/intro.mp3';
     $outroPath = $directory . '/outro.mp3';
 
+    $baseUrl = antrian_base_url();
+
     return [
         'intro_audio_file' => is_file($introPath) ? 'custom/intro.mp3' : '',
-        'intro_audio_url' => is_file($introPath) ? '/audio/custom/intro.mp3' : '',
+        'intro_audio_url' => is_file($introPath) ? $baseUrl . '/audio/custom/intro.mp3' : '',
         'intro_audio_exists' => is_file($introPath),
         'outro_audio_file' => is_file($outroPath) ? 'custom/outro.mp3' : '',
-        'outro_audio_url' => is_file($outroPath) ? '/audio/custom/outro.mp3' : '',
+        'outro_audio_url' => is_file($outroPath) ? $baseUrl . '/audio/custom/outro.mp3' : '',
         'outro_audio_exists' => is_file($outroPath),
     ];
 }

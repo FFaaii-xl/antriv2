@@ -371,7 +371,7 @@ unset($_SESSION['admin_notice']);
         }
     </style>
 </head>
-<body class="app-shell app-admin" data-role="admin" data-status-url="<?= antrian_base_url() ?>/api/status.php?peek=1" data-reset-url="<?= antrian_base_url() ?>/api/reset.php" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+<body class="app-shell app-admin" data-role="admin" data-base-url="<?= antrian_base_url() ?>" data-status-url="<?= antrian_base_url() ?>/api/status.php?peek=1" data-reset-url="<?= antrian_base_url() ?>/api/reset.php" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     
     <nav class="admin-navbar">
         <div style="display: flex; align-items: center; gap: 12px;">

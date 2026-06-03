@@ -53,7 +53,7 @@
         const logList = document.getElementById('activityLog');
         const loketBoard = document.getElementById('loketBoard');
         const audioUnlockOverlay = document.getElementById('audioUnlockOverlay');
-        const audioBasePath = '/audio';
+        const audioBasePath = (body.dataset.baseUrl || '') + '/audio';
         let activeAnnouncementToken = 0;
         let activeAudioElement = null;
         const announcementQueue = [];
@@ -535,7 +535,7 @@
 
         async function refreshLoketStatus() {
             try {
-                const payload = await fetchJson('/api/status.php?peek=true');
+                const payload = await fetchJson((body.dataset.baseUrl || '') + '/api/status.php?peek=true');
                 const state = payload.data;
                 if (currentQueueNumber) {
                     currentQueueNumber.textContent = padQueue(state.antrian);
@@ -547,7 +547,7 @@
 
         if (loketSelect) {
             loketSelect.addEventListener('change', () => {
-                window.location.href = `/loket?loket=${loketSelect.value}`;
+                window.location.href = `${body.dataset.baseUrl || ''}/loket?loket=${loketSelect.value}`;
             });
             syncLoketLabel();
         }
@@ -576,7 +576,7 @@
                 saveAliasButton.textContent = 'Menyimpan...';
 
                 try {
-                    const payload = await fetchJson('/api/update_loket_alias.php', {
+                    const payload = await fetchJson((body.dataset.baseUrl || '') + '/api/update_loket_alias.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

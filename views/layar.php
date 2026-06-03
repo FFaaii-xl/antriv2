@@ -55,7 +55,7 @@ require __DIR__ . '/../auth/helpers.php';
         }
     </style>
 </head>
-<body class="app-shell app-display" data-role="display" data-status-url="<?= antrian_base_url() ?>/api/status.php">
+<body class="app-shell app-display" data-role="display" data-base-url="<?= antrian_base_url() ?>" data-status-url="<?= antrian_base_url() ?>/api/status.php">
 
     <!-- Audio Unlock Overlay -->
     <div id="audioUnlockOverlay" style="position: fixed; inset: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center;">

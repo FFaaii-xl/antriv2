@@ -146,3 +146,12 @@ Ringkasnya:
    - Menjaga slot loket tetap stabil melalui kolom `loket_number` agar operasi 8 loket tidak bentrok saat ada penambahan atau pengurangan loket.
    - Menonaktifkan registrasi publik dan mengarahkan seluruh manajemen akun loket ke panel admin.
    - Menambahkan proteksi CSRF pada semua aksi tulis yang sensitif.
+
+9. **[Milestone 9] Perbaikan Kompatibilitas Deployment Subfolder (Audio & API)**
+   - **Root Cause**: Semua path audio dan beberapa URL API di `assets/js/main.js` di-hardcode sebagai path absolut dari root server (contoh: `/audio/belas.MP3`, `/api/status.php`). Akibatnya, audio tidak berfungsi dan API gagal saat diakses via subfolder (misal: `http://192.168.20.44/antriv2/layar`).
+   - **Solusi**: Menyuntikkan `antrian_base_url()` sebagai `data-base-url` attribute di tag `<body>` pada seluruh view (`layar.php`, `loket.php`, `admin.php`), lalu menggunakan `body.dataset.baseUrl` sebagai prefix di semua path JS yang sebelumnya hardcoded:
+     - `audioBasePath`: `/audio` → `{baseUrl}/audio`
+     - `refreshLoketStatus`: `/api/status.php` → `{baseUrl}/api/status.php`
+     - Redirect loket: `/loket?loket=N` → `{baseUrl}/loket?loket=N`
+     - Update alias: `/api/update_loket_alias.php` → `{baseUrl}/api/update_loket_alias.php`
+   - **Juga diperbaiki**: Path audio kustom di `auth/helpers.php` (`intro_audio_url`, `outro_audio_url`) yang sebelumnya hardcode `/audio/custom/...` kini menggunakan `antrian_base_url()` prefix.
