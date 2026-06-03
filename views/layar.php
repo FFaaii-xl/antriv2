@@ -9,7 +9,10 @@ require __DIR__ . '/../auth/helpers.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Display</title>
-    <link rel="icon" type="image/png" href="<?= antrian_base_url() ?>/assets/img/logosmk4.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= antrian_base_url() ?>/assets/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= antrian_base_url() ?>/assets/img/favicon-16x16.png">
+    <link rel="manifest" href="<?= antrian_base_url() ?>/assets/img/site.webmanifest">
     <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
@@ -77,7 +80,7 @@ require __DIR__ . '/../auth/helpers.php';
         <header class="broadcast-bar" style="padding: 16px 32px;">
             <div class="d-flex align-items-center gap-4">
                 <div style="background: rgba(124, 58, 237, 0.05); padding: 12px; border-radius: 20px;">
-                    <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo SMKN 4 Surakarta" style="width: 56px; height: 56px; object-fit: contain;">
+                    <img src="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png" alt="Logo SMKN 4 Surakarta" style="width: 56px; height: 56px; object-fit: contain;">
                 </div>
                 <div>
                     <div style="display: flex; align-items: center; gap: 8px;">

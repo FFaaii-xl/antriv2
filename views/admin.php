@@ -261,7 +261,10 @@ unset($_SESSION['admin_notice']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Admin</title>
-    <link rel="icon" type="image/png" href="<?= antrian_base_url() ?>/assets/img/logosmk4.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= antrian_base_url() ?>/assets/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= antrian_base_url() ?>/assets/img/favicon-16x16.png">
+    <link rel="manifest" href="<?= antrian_base_url() ?>/assets/img/site.webmanifest">
     <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
@@ -376,7 +379,7 @@ unset($_SESSION['admin_notice']);
     
     <nav class="admin-navbar">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo" style="width: 36px; height: 36px;">
+            <img src="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png" alt="Logo" style="width: 36px; height: 36px;">
             <div>
                 <h1 style="font-size: 1.2rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Antrian SPMB 2026</h1>
                 <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">Panel Admin &bull; <?= htmlspecialchars($currentUser['username'], ENT_QUOTES, 'UTF-8') ?></p>

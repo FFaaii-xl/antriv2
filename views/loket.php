@@ -41,7 +41,10 @@ $csrfToken = antrian_csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Loket <?= $loket ?><?= ($aliasName && $aliasName !== 'Loket ' . $loket) ? ' (' . htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') . ')' : '' ?></title>
-    <link rel="icon" type="image/png" href="<?= antrian_base_url() ?>/assets/img/logosmk4.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= antrian_base_url() ?>/assets/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= antrian_base_url() ?>/assets/img/favicon-16x16.png">
+    <link rel="manifest" href="<?= antrian_base_url() ?>/assets/img/site.webmanifest">
     <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
@@ -49,7 +52,7 @@ $csrfToken = antrian_csrf_token();
 <body class="app-shell app-loket app-admin" data-role="loket" data-base-url="<?= antrian_base_url() ?>" data-next-base-url="<?= antrian_base_url() ?>/api/next.php" data-loket="<?= $loket ?>" data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <nav class="admin-navbar" style="display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <img src="<?= antrian_base_url() ?>/assets/img/logosmk4.png" alt="Logo" style="width: 36px; height: 36px;">
+            <img src="<?= antrian_base_url() ?>/assets/img/apple-touch-icon.png" alt="Logo" style="width: 36px; height: 36px;">
             <div>
                 <h1 style="font-size: 1.2rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Antrian SPMB 2026</h1>
                 <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">Operasional Loket &bull; <?= htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') ?></p>
