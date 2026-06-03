@@ -625,7 +625,7 @@ unset($_SESSION['admin_notice']);
         </div>
     </div>
 
-    <script src="<?= antrian_base_url() ?>/assets/js/main.js"></script>
+    <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
     <script>
         lucide.createIcons();
 
@@ -647,26 +647,6 @@ unset($_SESSION['admin_notice']);
                 settingsModal.classList.remove('active');
             }
         });
-
-        // Confirmation for Reset Button
-        const resetButton = document.getElementById('resetButtonWithConfirm');
-        if (resetButton) {
-            resetButton.addEventListener('click', () => {
-                if (confirm('APAKAH ANDA YAKIN INGIN MERESET ANTRIAN?\n\nTindakan ini akan mengembalikan nomor antrian ke pengaturan awal dan menghapus memori pemanggilan loket hari ini.')) {
-                    // Trigger the original reset logic from main.js by clicking the hidden or redirecting
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = document.body.dataset.resetUrl;
-                    const csrf = document.createElement('input');
-                    csrf.type = 'hidden';
-                    csrf.name = 'csrf_token';
-                    csrf.value = document.body.dataset.csrfToken;
-                    form.appendChild(csrf);
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        }
     </script>
 </body>
 </html>

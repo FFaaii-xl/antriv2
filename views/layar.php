@@ -57,6 +57,20 @@ require __DIR__ . '/../auth/helpers.php';
 </head>
 <body class="app-shell app-display" data-role="display" data-status-url="<?= antrian_base_url() ?>/api/status.php">
 
+    <!-- Audio Unlock Overlay -->
+    <div id="audioUnlockOverlay" style="position: fixed; inset: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; text-align: center;">
+        <div style="background: var(--accent); color: white; width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); animation: pulseGlow 2s infinite alternate;">
+            <i data-lucide="volume-2" style="width: 48px; height: 48px;"></i>
+        </div>
+        <h2 style="font-size: 2.5rem; font-weight: 900; color: var(--text); margin-bottom: 12px; letter-spacing: -0.02em;">Klik Layar Untuk Memulai</h2>
+        <p style="font-size: 1.2rem; color: var(--muted); font-weight: 500; max-width: 600px; padding: 0 20px;">Browser memerlukan interaksi pengguna untuk mengaktifkan fitur suara panggilan otomatis.</p>
+    </div>
+
+    <!-- Announcement Playing Indicator -->
+    <div id="audioPlayingIndicator" style="position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 12px 32px; border-radius: 99px; display: flex; align-items: center; gap: 12px; z-index: 9998; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.05em;">
+        <i data-lucide="volume-2" class="pulse-glow" style="width: 24px; height: 24px;"></i>
+        MEMANGGIL ANTRIAN...
+    </div>
 
     <main class="page-display" style="margin-top: 0; margin-bottom: 0;">
         <header class="broadcast-bar" style="padding: 16px 32px;">
@@ -149,7 +163,7 @@ require __DIR__ . '/../auth/helpers.php';
         </div>
     </div>
 
-    <script src="<?= antrian_base_url() ?>/assets/js/main.js"></script>
+    <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
     <script>
         lucide.createIcons();
 

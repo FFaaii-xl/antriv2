@@ -206,7 +206,7 @@ $csrfToken = antrian_csrf_token();
         </div>
     </div>
 
-    <script src="<?= antrian_base_url() ?>/assets/js/main.js"></script>
+    <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
     <script>
         lucide.createIcons();
     </script>

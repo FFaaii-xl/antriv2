@@ -52,11 +52,21 @@
         const queueElement = document.getElementById('queueNumber');
         const logList = document.getElementById('activityLog');
         const loketBoard = document.getElementById('loketBoard');
+        const audioUnlockOverlay = document.getElementById('audioUnlockOverlay');
         const audioBasePath = '/audio';
         let activeAnnouncementToken = 0;
         let activeAudioElement = null;
         const announcementQueue = [];
         let isAnnouncementPlaying = false;
+
+        if (audioUnlockOverlay) {
+            audioUnlockOverlay.addEventListener('click', () => {
+                const dummyAudio = new Audio(audioPath('in.wav'));
+                dummyAudio.volume = 0;
+                dummyAudio.play().catch(() => {});
+                audioUnlockOverlay.style.display = 'none';
+            });
+        }
 
         function stopActiveAnnouncement() {
             activeAnnouncementToken += 1;
@@ -226,6 +236,11 @@
             }
 
             isAnnouncementPlaying = true;
+            const audioIndicator = document.getElementById('audioPlayingIndicator');
+            if (audioIndicator) {
+                audioIndicator.style.top = '32px';
+            }
+
             const nextAnn = announcementQueue.shift();
 
             try {
@@ -234,6 +249,9 @@
                 console.error('Panggilan audio terganggu/gagal:', err);
             } finally {
                 isAnnouncementPlaying = false;
+                if (audioIndicator) {
+                    audioIndicator.style.top = '-100px';
+                }
                 window.setTimeout(processAnnouncementQueue, 300);
             }
         }
@@ -385,9 +403,16 @@
 
         if (resetButton) {
             resetButton.addEventListener('click', async () => {
+                if (resetButton.id === 'resetButtonWithConfirm') {
+                    if (!confirm('APAKAH ANDA YAKIN INGIN MERESET ANTRIAN?\n\nTindakan ini akan mengembalikan nomor antrian ke pengaturan awal dan menghapus memori pemanggilan loket hari ini.')) {
+                        return;
+                    }
+                }
                 resetButton.disabled = true;
                 try {
-                    const payload = await fetchJson(resetUrl, { method: 'POST' });
+                    const formData = new FormData();
+                    formData.append('_csrf', document.body.dataset.csrfToken || '');
+                    const payload = await fetchJson(resetUrl, { method: 'POST', body: formData });
                     if (messageElement) {
                         messageElement.textContent = payload.message;
                     }
@@ -446,7 +471,9 @@
             }
 
             try {
-                const payload = await fetchJson(url, { method: 'POST' });
+                const formData = new FormData();
+                formData.append('_csrf', document.body.dataset.csrfToken || '');
+                const payload = await fetchJson(url, { method: 'POST', body: formData });
                 if (loketMessage) {
                     loketMessage.textContent = `Antrian ${padQueue(payload.data.antrian)} berhasil dipanggil dari loket ${payload.data.loket}.`;
                 }
@@ -469,7 +496,8 @@
             }
 
             const loket = loketSelect.value;
-            const url = `/api/recall.php?loket=${encodeURIComponent(loket)}`;
+            // Gunakan baseUrl yang sudah dimodifikasi agar pathnya relatif dari aplikasi utama
+            const recallUrl = baseUrl.replace('next.php', 'recall.php') + `?loket=${encodeURIComponent(loket)}`;
 
             recallButton.disabled = true;
             const originalContent = recallButton.innerHTML;
@@ -479,7 +507,9 @@
             }
 
             try {
-                const payload = await fetchJson(url, { method: 'POST' });
+                const formData = new FormData();
+                formData.append('_csrf', document.body.dataset.csrfToken || '');
+                const payload = await fetchJson(recallUrl, { method: 'POST', body: formData });
                 if (loketMessage) {
                     if (payload.data.antrian > 0) {
                         loketMessage.textContent = `Antrian ${padQueue(payload.data.antrian)} dipanggil ulang dari loket ${payload.data.loket}.`;
