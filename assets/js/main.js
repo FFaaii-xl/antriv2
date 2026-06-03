@@ -287,15 +287,21 @@
                 const isJustCalled = activeLoketId && item.loket === activeLoketId && item.antrian > 0;
 
                 const avatarHtml = item.background_url 
-                    ? `<div class="avatar-container" style="position: absolute; top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1.5px solid var(--accent); box-shadow: 0 4px 8px rgba(124, 58, 237, 0.08); transition: transform 0.3s ease;"><img src="${item.background_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Photo Profil"></div>`
-                    : `<div class="avatar-container" style="position: absolute; top: 12px; left: 12px; width: 42px; height: 42px; border-radius: 999px; background: rgba(124, 58, 237, 0.05); border: 1.5px dashed rgba(124, 58, 237, 0.16); display: flex; align-items: center; justify-content: center;"><i data-lucide="user" class="text-primary" style="width: 18px; height: 18px; stroke-width: 2.2px;"></i></div>`;
+                    ? `<div class="avatar-container" style="width: 72px; height: 72px; border-radius: 999px; overflow: hidden; border: 2.5px solid var(--accent); box-shadow: 0 6px 16px rgba(124, 58, 237, 0.12); transition: transform 0.3s ease; flex-shrink: 0;"><img src="${item.background_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Photo Profil"></div>`
+                    : `<div class="avatar-container" style="width: 72px; height: 72px; border-radius: 999px; background: rgba(124, 58, 237, 0.05); border: 2px dashed rgba(124, 58, 237, 0.16); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i data-lucide="user" class="text-primary" style="width: 30px; height: 30px; stroke-width: 2px;"></i></div>`;
+                
+                const aliasHtml = hasAlias ? `<span style="font-size: 0.86rem; color: var(--muted); font-weight: 600; margin-top: 8px; text-align: center; width: 100%; display: block; overflow-wrap: break-word; line-height: 1.3;">${item.alias}</span>` : '';
 
                 return `
-                    <article class="loket-card loket-card-centered ${isJustCalled ? 'loket-card-highlight' : (item.antrian > 0 ? 'loket-card-active' : '')}" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; min-height: 168px; gap: 14px; border-radius: 24px;">
-                        ${avatarHtml}
-                        <span class="loket-card-badge" style="margin: 0; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 800; color: black; padding: 2px 12px; border-radius: 999px;">Loket ${item.loket}</span>
-                        ${hasAlias ? `<span style="font-size: 0.86rem; color: var(--muted); font-weight: 600; margin-top: -2px; margin-bottom: 2px;">${item.alias}</span>` : ''}
-                        <strong style="font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 850; color: var(--text); line-height: 1; margin: 0; letter-spacing: 0.04em;">${queueText}</strong>
+                    <article class="loket-card ${isJustCalled ? 'loket-card-highlight' : (item.antrian > 0 ? 'loket-card-active' : '')}" style="display: flex; flex-direction: row; align-items: center; padding: 20px; min-height: 168px; gap: 16px; border-radius: 24px;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; width: 100px;">
+                            ${avatarHtml}
+                            ${aliasHtml}
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; text-align: center;">
+                            <span class="loket-card-badge" style="margin: 0; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 800; color: black; padding: 4px 14px; border-radius: 999px;">Loket ${item.loket}</span>
+                            <strong style="font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 850; color: var(--text); line-height: 1; margin: 0; letter-spacing: 0.04em;">${queueText}</strong>
+                        </div>
                     </article>
                 `;
             }).join('');

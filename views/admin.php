@@ -261,6 +261,7 @@ unset($_SESSION['admin_notice']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Admin</title>
+    <link rel="icon" type="image/png" href="<?= antrian_base_url() ?>/assets/img/logosmk4.png">
     <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
@@ -516,53 +517,7 @@ unset($_SESSION['admin_notice']);
                                     <td><span style="background: rgba(124, 58, 237, 0.1); color: var(--accent-strong); padding: 4px 10px; border-radius: 99px; font-weight: 700;"><?= htmlspecialchars($row['antrian_terakhir'], ENT_QUOTES, 'UTF-8') ?></span></td>
                                     <td>
                                         <?php if ($row['role'] === 'loket'): ?>
-                                            <details class="row-action-dropdown">
-                                                <summary class="row-action-toggle">Edit</summary>
-                                                <div class="table-actions">
-                                                     <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" enctype="multipart/form-data">
-                                                         <input type="hidden" name="action" value="update_user">
-                                                         <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
-                                                         <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
-                                                         <?= antrian_csrf_hidden_input() ?>
-                                                         <label class="table-inline-field">
-                                                             <span>Nama</span>
-                                                             <input type="text" name="username" value="<?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?>" required>
-                                                         </label>
-                                                         <label class="table-inline-field">
-                                                             <span>Alias</span>
-                                                             <input type="text" name="alias" value="<?= htmlspecialchars($row['alias'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nama tampil">
-                                                         </label>
-                                                         <label class="table-inline-field" style="margin-top: 8px;">
-                                                             <span>Foto Profil (Photo Profil)</span>
-                                                             <input type="file" name="profile_picture" accept="image/*" class="input-select" style="margin-top: 4px; padding: 8px 12px; font-size: 0.88rem; border-radius: 10px;">
-                                                         </label>
-                                                         <?php
-                                                             $ppFileUid = __DIR__ . '/../assets/img/backgrounds/loket_uid_' . (int) $row['id'] . '.jpg';
-                                                             $ppFileLegacy = __DIR__ . '/../assets/img/backgrounds/loket_' . (int) $row['no'] . '.jpg';
-                                                             $ppFile = is_file($ppFileUid) ? $ppFileUid : (is_file($ppFileLegacy) ? $ppFileLegacy : null);
-                                                         ?>
-                                                         <?php if ($ppFile): ?>
-                                                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(239, 68, 68, 0.04); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.08);">
-                                                                 <div style="width: 32px; height: 32px; border-radius: 999px; overflow: hidden; border: 1.5px solid var(--accent); flex-shrink: 0;">
-                                                                     <img src="<?= antrian_base_url() ?>/assets/img/backgrounds/<?= basename($ppFile) ?>?v=<?= filemtime($ppFile) ?>" style="width: 100%; height: 100%; object-fit: cover;">
-                                                                 </div>
-                                                                 <label style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--danger); font-weight: 600; margin: 0; cursor: pointer;">
-                                                                     <input type="checkbox" name="delete_profile_picture" value="1" style="accent-color: var(--danger);"> Hapus Foto
-                                                                 </label>
-                                                             </div>
-                                                         <?php endif; ?>
-                                                         <button class="button button-primary table-action-button" type="submit">Simpan</button>
-                                                    </form>
-
-                                                    <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" onsubmit="return confirm('Hapus loket ini secara permanen?');">
-                                                        <input type="hidden" name="action" value="delete_user">
-                                                        <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
-                                                        <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
-                                                        <?= antrian_csrf_hidden_input() ?>
-                                                        <button class="button button-danger table-action-button" type="submit">Hapus</button>
-                                                    </form>
-                                                </div>
-                                            </details>
+                                            <button type="button" class="row-action-toggle" onclick="openEditModal(<?= (int) $row['id'] ?>)">Edit</button>
                                         <?php else: ?>
                                             <span style="font-size: 0.85rem; color: var(--muted);">Admin</span>
                                         <?php endif; ?>
@@ -625,6 +580,68 @@ unset($_SESSION['admin_notice']);
         </div>
     </div>
 
+    <!-- Edit Loket Modals -->
+    <?php foreach ($loketRows as $row): ?>
+        <?php if ($row['role'] === 'loket'): ?>
+            <div class="modal-overlay loket-edit-modal" id="editModal_<?= (int) $row['id'] ?>">
+                <div class="modal-content" style="position: relative;">
+                    <button class="modal-close" type="button" onclick="closeEditModal(<?= (int) $row['id'] ?>)"><i data-lucide="x" style="width: 24px; height: 24px;"></i></button>
+                    <h2 style="font-weight: 800; margin-bottom: 24px; font-size: 1.4rem;">Edit <?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?></h2>
+                    
+                    <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="update_user">
+                        <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
+                        <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= antrian_csrf_hidden_input() ?>
+                        
+                        <label class="table-inline-field">
+                            <span style="font-weight: 600;">Nama</span>
+                            <input type="text" name="username" value="<?= htmlspecialchars($row['nama'], ENT_QUOTES, 'UTF-8') ?>" required>
+                        </label>
+                        
+                        <label class="table-inline-field" style="margin-top: 12px;">
+                            <span style="font-weight: 600;">Alias</span>
+                            <input type="text" name="alias" value="<?= htmlspecialchars($row['alias'], ENT_QUOTES, 'UTF-8') ?>" placeholder="Nama tampil">
+                        </label>
+                        
+                        <label class="table-inline-field" style="margin-top: 12px;">
+                            <span style="font-weight: 600;">Foto Profil (Photo Profil)</span>
+                            <input type="file" name="profile_picture" accept="image/*" class="input-select" style="margin-top: 4px; padding: 8px 12px; font-size: 0.88rem; border-radius: 10px;">
+                        </label>
+                        
+                        <?php
+                            $ppFileUid = __DIR__ . '/../assets/img/backgrounds/loket_uid_' . (int) $row['id'] . '.jpg';
+                            $ppFileLegacy = __DIR__ . '/../assets/img/backgrounds/loket_' . (int) $row['no'] . '.jpg';
+                            $ppFile = is_file($ppFileUid) ? $ppFileUid : (is_file($ppFileLegacy) ? $ppFileLegacy : null);
+                        ?>
+                        <?php if ($ppFile): ?>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(239, 68, 68, 0.04); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.08);">
+                                <div style="width: 32px; height: 32px; border-radius: 999px; overflow: hidden; border: 1.5px solid var(--accent); flex-shrink: 0;">
+                                    <img src="<?= antrian_base_url() ?>/assets/img/backgrounds/<?= basename($ppFile) ?>?v=<?= filemtime($ppFile) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--danger); font-weight: 600; margin: 0; cursor: pointer;">
+                                    <input type="checkbox" name="delete_profile_picture" value="1" style="accent-color: var(--danger);"> Hapus Foto
+                                </label>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <div style="margin-top: 24px;">
+                            <button class="button button-primary" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">Simpan Perubahan</button>
+                        </div>
+                    </form>
+
+                    <form class="table-action-form" method="post" action="<?= antrian_base_url() ?>/admin" onsubmit="return confirm('Hapus loket ini secara permanen?');" style="margin-top: 12px;">
+                        <input type="hidden" name="action" value="delete_user">
+                        <input type="hidden" name="user_id" value="<?= (int) $row['id'] ?>">
+                        <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= antrian_csrf_hidden_input() ?>
+                        <button class="button button-danger" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">Hapus Loket</button>
+                    </form>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php endforeach; ?>
+
     <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
     <script>
         lucide.createIcons();
@@ -645,6 +662,38 @@ unset($_SESSION['admin_notice']);
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
                 settingsModal.classList.remove('active');
+            }
+        });
+
+        // Edit Loket Modal Logic
+        function openEditModal(userId) {
+            const modal = document.getElementById('editModal_' + userId);
+            if (modal) {
+                modal.classList.add('active');
+                lucide.createIcons();
+            }
+        }
+
+        function closeEditModal(userId) {
+            const modal = document.getElementById('editModal_' + userId);
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Click outside to close any edit modal
+        document.querySelectorAll('.loket-edit-modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Escape key to close any open modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             }
         });
     </script>

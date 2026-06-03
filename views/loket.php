@@ -41,6 +41,7 @@ $csrfToken = antrian_csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antrian SPMB 2026 | Loket <?= $loket ?><?= ($aliasName && $aliasName !== 'Loket ' . $loket) ? ' (' . htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') . ')' : '' ?></title>
+    <link rel="icon" type="image/png" href="<?= antrian_base_url() ?>/assets/img/logosmk4.png">
     <link href="<?= antrian_base_url() ?>/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= antrian_base_url() ?>/assets/css/style.css">
     <script src="<?= antrian_base_url() ?>/assets/vendor/lucide/lucide.min.js"></script>
@@ -53,14 +54,6 @@ $csrfToken = antrian_csrf_token();
                 <h1 style="font-size: 1.2rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Antrian SPMB 2026</h1>
                 <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">Operasional Loket &bull; <?= htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') ?></p>
             </div>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <a class="button button-ghost" href="<?= antrian_base_url() ?>/layar" target="_blank" style="padding: 10px 16px; border-radius: 12px;">
-                <i data-lucide="monitor" style="width: 16px; height: 16px;"></i> Layar
-            </a>
-            <a class="button button-ghost text-danger" href="<?= antrian_base_url() ?>/logout" style="padding: 10px 16px; border-radius: 12px;">
-                <i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Logout
-            </a>
         </div>
     </nav>
 
@@ -77,14 +70,15 @@ $csrfToken = antrian_csrf_token();
                     </div>
                 <?php endif; ?>
                 
-                <h2 id="loketTitle" style="font-weight: 850; letter-spacing: -0.02em; margin: 8px 0 0 0; color: var(--text); font-size: 1.6rem;">
-                    Loket <?= $loket ?>
-                </h2>
                 <?php if ($aliasName && $aliasName !== 'Loket ' . $loket): ?>
                     <span id="loketTitleAlias" style="font-size: 1rem; color: var(--muted); font-weight: 500; display: block;">(<?= htmlspecialchars($aliasName, ENT_QUOTES, 'UTF-8') ?>)</span>
                 <?php else: ?>
                     <span id="loketTitleAlias" style="font-size: 1rem; color: var(--muted); font-weight: 500; display: none;"></span>
                 <?php endif; ?>
+
+                <h2 id="loketTitle" style="font-weight: 850; letter-spacing: -0.02em; margin: 8px 0 0 0; color: var(--text); font-size: 1.6rem;">
+                    Loket <?= $loket ?>
+                </h2>
             </div>
 
             <!-- Pengaturan Loket -->
