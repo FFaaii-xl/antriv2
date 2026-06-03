@@ -204,6 +204,19 @@ $csrfToken = antrian_csrf_token();
                 </div>
             </div>
         </div>
+
+        <!-- PANEL KANAN: Log Panggilan -->
+        <div class="admin-sidebar" style="width: 320px; overflow-y: auto;">
+            <div class="panel-card-premium" style="padding: 24px; min-height: 100%; display: flex; flex-direction: column;">
+                <h2 style="font-size: 1.1rem; font-weight: 850; margin: 0 0 20px 0; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="megaphone" class="text-primary" style="width: 18px; height: 18px;"></i> Riwayat Panggilan
+                </h2>
+                <div id="queueNumber" style="display: none;">000</div>
+                <ul id="activityLog" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-weight: 600;">
+                    <li><span style="color: var(--muted); font-size: 0.9rem;">Memuat riwayat...</span></li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <script src="<?= antrian_base_url() ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>

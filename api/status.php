@@ -69,6 +69,18 @@ try {
         ];
     }
 
+    $historyRows = $pdo->query('SELECT loket, antrian, created_at FROM call_history ORDER BY id DESC LIMIT 20')->fetchAll();
+    $callHistory = [];
+    foreach ($historyRows as $row) {
+        $loketNum = (int) $row['loket'];
+        $callHistory[] = [
+            'loket' => $loketNum,
+            'alias' => $aliases[$loketNum] ?? ('Loket ' . $loketNum),
+            'antrian' => (int) $row['antrian'],
+            'created_at' => (string) $row['created_at'],
+        ];
+    }
+
     if ($shouldSpeak) {
         $pdo->prepare('UPDATE state SET panggil = 0 WHERE id = 1')->execute();
         $pdo->commit();
@@ -100,6 +112,7 @@ try {
                 'display_rows' => (int) ($settings['display_rows'] ?? 2),
             ],
             'loket_calls' => $mappedCalls,
+            'call_history' => $callHistory,
         ],
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $throwable) {

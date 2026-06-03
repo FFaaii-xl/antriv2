@@ -48,6 +48,15 @@ try {
         'updated_at' => date('Y-m-d H:i:s'),
     ]);
 
+    $pdo->prepare(
+        'INSERT INTO call_history (loket, antrian, created_at)
+         VALUES (:loket, :antrian, :created_at)'
+    )->execute([
+        'loket' => $loket,
+        'antrian' => $nextNumber,
+        'created_at' => date('Y-m-d H:i:s'),
+    ]);
+
     $pdo->exec('COMMIT');
     $settings = antrian_app_settings();
 

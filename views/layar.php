@@ -102,13 +102,13 @@ require __DIR__ . '/../auth/helpers.php';
                 </div>
                 <div id="loketBoard" class="loket-board-grid" style="flex: 1; margin-bottom: 24px; gap: 24px;"></div>
                 
-                <div style="align-self: center; width: 100%; max-width: 800px; padding: 16px 32px; background: #ffffff; border-radius: 24px; border: 2px solid rgba(124, 58, 237, 0.1); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.08); margin-top: auto; text-align: center;">
+                <div style="align-self: center; width: 100%; max-width: 100%; padding: 16px 32px; background: #ffffff; border-radius: 24px; border: 2px solid rgba(124, 58, 237, 0.1); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.08); margin-top: auto; text-align: center;">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <span class="eyebrow" style="margin: 0; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--accent-strong); font-size: 0.9rem; letter-spacing: 0.15em; font-weight: 800;">
                             <i data-lucide="megaphone" style="width: 18px; height: 18px;"></i> LIVE LOG PANGGILAN
                         </span>
                         <div id="queueNumber" style="display: none;">000</div>
-                        <ul id="activityLog" class="activity-log-vertical" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; width: 100%; font-size: 1.1rem; font-weight: 600;">
+                        <ul id="activityLog" class="activity-log-horizontal" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; justify-content: flex-start; gap: 16px; width: 100%; font-size: 1.1rem; font-weight: 600;">
                             <li><span style="color: var(--muted);">Memuat riwayat...</span></li>
                         </ul>
                     </div>

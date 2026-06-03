@@ -58,6 +58,15 @@ function antrian_db(): PDO
     );
 
     $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS call_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loket INTEGER NOT NULL,
+            antrian INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        )'
+    );
+
+    $pdo->exec(
         'CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,

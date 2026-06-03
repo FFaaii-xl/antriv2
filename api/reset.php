@@ -39,6 +39,7 @@ try {
     ]);
 
     $pdo->prepare('UPDATE loket_last_call SET antrian = 0')->execute();
+    $pdo->prepare('DELETE FROM call_history')->execute();
 
     echo json_encode([
         'success' => true,

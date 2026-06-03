@@ -198,7 +198,6 @@
                         }
 
                         await playAudioClip(segment, token);
-                        await wait(0);
                     }
 
                     return true;
@@ -211,7 +210,6 @@
                         }
 
                         await playAudioClip(segment, token);
-                        await wait(0);
                     }
 
                     return true;
@@ -224,7 +222,6 @@
                 }
 
                 await step();
-                await wait(0);
             }
 
             return true;
@@ -296,7 +293,7 @@
                 return `
                     <article class="loket-card loket-card-centered ${isJustCalled ? 'loket-card-highlight' : (item.antrian > 0 ? 'loket-card-active' : '')}" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; min-height: 168px; gap: 14px; border-radius: 24px;">
                         ${avatarHtml}
-                        <span class="loket-card-badge" style="margin: 0; font-size: 0.8rem; padding: 4px 14px; min-width: 90px; border-radius: 999px;">Loket ${item.loket}</span>
+                        <span class="loket-card-badge" style="margin: 0; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 800; color: black; padding: 2px 12px; border-radius: 999px;">Loket ${item.loket}</span>
                         ${hasAlias ? `<span style="font-size: 0.86rem; color: var(--muted); font-weight: 600; margin-top: -2px; margin-bottom: 2px;">${item.alias}</span>` : ''}
                         <strong style="font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 850; color: var(--text); line-height: 1; margin: 0; letter-spacing: 0.04em;">${queueText}</strong>
                     </article>
@@ -328,17 +325,14 @@
                 }
 
                 if (logList) {
-                    const sortedCalls = [...(state.loket_calls || [])]
-                        .filter(call => call.antrian > 0)
-                        .sort((a, b) => new Date(b.updated_at.replace(' ', 'T')).getTime() - new Date(a.updated_at.replace(' ', 'T')).getTime())
-                        .slice(0, 2);
+                    const sortedCalls = state.call_history || [];
 
                     if (sortedCalls.length > 0) {
                         logList.innerHTML = sortedCalls.map(call => {
                             const hasCallAlias = call.alias && call.alias !== `loket-${String(call.loket).padStart(3, '0')}` && call.alias !== `Loket ${call.loket}`;
                             const destination = `Loket ${call.loket}${hasCallAlias ? ` (${call.alias})` : ''}`;
 
-                            return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: center; align-items: center; gap: 6px; margin: 2px 0;">
+                            return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: flex-start; align-items: center; gap: 6px; margin: 0; white-space: nowrap; flex-shrink: 0;">
                                 <i data-lucide="dot" class="text-primary" style="width: 16px; height: 16px; stroke-width: 4px; margin-right: -4px;"></i>
                                 <span>Antrian <strong style="color: var(--accent-strong); font-weight: 800;">${padQueue(call.antrian)}</strong> ke <strong>${destination}</strong></span>
                             </li>`;
@@ -539,6 +533,26 @@
                 const state = payload.data;
                 if (currentQueueNumber) {
                     currentQueueNumber.textContent = padQueue(state.antrian);
+                }
+                
+                const logList = document.getElementById('activityLog');
+                if (logList) {
+                    const sortedCalls = state.call_history || [];
+                    if (sortedCalls.length > 0) {
+                        logList.innerHTML = sortedCalls.map(call => {
+                            const hasCallAlias = call.alias && call.alias !== `loket-${String(call.loket).padStart(3, '0')}` && call.alias !== `Loket ${call.loket}`;
+                            const destination = `Loket ${call.loket}${hasCallAlias ? ` (${call.alias})` : ''}`;
+                            return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: flex-start; align-items: center; gap: 6px; margin: 0; white-space: nowrap; flex-shrink: 0;">
+                                <i data-lucide="dot" class="text-primary" style="width: 16px; height: 16px; stroke-width: 4px; margin-right: -4px;"></i>
+                                <span>Antrian <strong style="color: var(--accent-strong); font-weight: 800;">${padQueue(call.antrian)}</strong> ke <strong>${destination}</strong></span>
+                            </li>`;
+                        }).join('');
+                        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                            lucide.createIcons();
+                        }
+                    } else {
+                        logList.innerHTML = '<li><span style="color: var(--muted); font-size: 0.82rem;">Belum ada panggilan</span></li>';
+                    }
                 }
             } catch (error) {
                 console.error('Gagal memperbarui status loket:', error);

@@ -39,6 +39,15 @@ try {
                 'antrian' => $lastCalledNumber,
                 'loket' => $loket,
             ]);
+
+        $pdo->prepare(
+            'INSERT INTO call_history (loket, antrian, created_at)
+             VALUES (:loket, :antrian, :created_at)'
+        )->execute([
+            'loket' => $loket,
+            'antrian' => $lastCalledNumber,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     $pdo->exec('COMMIT');
