@@ -239,9 +239,30 @@
             }
 
             const nextAnn = announcementQueue.shift();
+            const annState = nextAnn.state;
+
+            // SINKRONISASI VISUAL: Build a visual state that shows THIS announcement's
+            // antrian/loket number. Override the loket card for the active loket so
+            // the card displays the SAME number as the audio announcement.
+            const baseLoketCalls = (typeof latestState !== 'undefined' && latestState) ? latestState.loket_calls : annState.loket_calls;
+            const syncedLoketCalls = (baseLoketCalls || []).map(item => {
+                if (item.loket === annState.loket) {
+                    return { ...item, antrian: annState.antrian };
+                }
+                return item;
+            });
+
+            const visualState = {
+                antrian: annState.antrian,
+                loket: annState.loket,
+                settings: annState.settings,
+                loket_calls: syncedLoketCalls,
+                call_history: (typeof latestState !== 'undefined' && latestState) ? latestState.call_history : annState.call_history,
+            };
+            updateVisualState(visualState);
 
             try {
-                await playQueueAnnouncement(nextAnn.queue, nextAnn.loket, nextAnn.settings);
+                await playQueueAnnouncement(annState.antrian, annState.loket, annState.settings);
             } catch (err) {
                 console.error('Panggilan audio terganggu/gagal:', err);
             } finally {
@@ -253,16 +274,12 @@
             }
         }
 
-        function queueAnnouncement(queue, loket, settings) {
-            const isDuplicate = announcementQueue.some(item => item.queue === queue && item.loket === loket);
+        function queueAnnouncement(state) {
+            const isDuplicate = announcementQueue.some(item => item.state.antrian === state.antrian && item.state.loket === state.loket);
             if (!isDuplicate) {
-                announcementQueue.push({ queue, loket, settings });
+                announcementQueue.push({ state });
                 processAnnouncementQueue();
             }
-        }
-
-        function speakQueue(queue, loket, settings = {}) {
-            queueAnnouncement(queue, loket, settings);
         }
 
         function renderLoketBoard(loketCalls, settings, activeLoketId) {
@@ -311,43 +328,86 @@
             }
         }
 
+        function updateVisualState(state) {
+            const queueText = padQueue(state.antrian);
+            
+            if (queueElement) {
+                queueElement.textContent = queueText;
+            }
+
+            renderLoketBoard(state.loket_calls, state.settings, state.loket);
+
+            if (logList) {
+                const sortedCalls = state.call_history || [];
+
+                if (sortedCalls.length > 0) {
+                    logList.innerHTML = sortedCalls.map(call => {
+                        const hasCallAlias = call.alias && call.alias !== `loket-${String(call.loket).padStart(3, '0')}` && call.alias !== `Loket ${call.loket}`;
+                        const destination = `Loket ${call.loket}${hasCallAlias ? ` (${call.alias})` : ''}`;
+
+                        return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: flex-start; align-items: center; gap: 6px; margin: 0; white-space: nowrap; flex-shrink: 0;">
+                            <i data-lucide="dot" class="text-primary" style="width: 16px; height: 16px; stroke-width: 4px; margin-right: -4px;"></i>
+                            <span>Antrian <strong style="color: var(--accent-strong); font-weight: 800;">${padQueue(call.antrian)}</strong> ke <strong>${destination}</strong></span>
+                        </li>`;
+                    }).join('');
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        lucide.createIcons();
+                    }
+                } else {
+                    logList.innerHTML = '<li><span style="color: var(--muted); font-size: 0.82rem;">Belum ada panggilan</span></li>';
+                }
+            }
+        }
+
+        // Track the last seen call_history ID so we detect new calls
+        let lastSeenHistoryId = 0;
+        let latestState = null;
+        let isFirstLoad = true;
+
         async function refreshDisplay() {
             try {
-                const payload = await fetchJson(statusUrl);
+                // Always use peek=true so we don't consume the panggil flag
+                const payload = await fetchJson(statusUrl + (statusUrl.includes('?') ? '&' : '?') + 'peek=true');
                 const state = payload.data;
-                const queueText = padQueue(state.antrian);
+                latestState = state;
 
-                const hasStateAlias = state.loket_alias && state.loket_alias !== `loket-${String(state.loket).padStart(3, '0')}` && state.loket_alias !== `Loket ${state.loket}`;
-                const loketText = state.loket > 0 ? `Loket ${state.loket}${hasStateAlias ? ` (${state.loket_alias})` : ''}` : '-';
+                const history = state.call_history || [];
 
-                if (queueElement) {
-                    queueElement.textContent = queueText;
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    if (history.length > 0) {
+                        lastSeenHistoryId = Math.max(...history.map(h => h.id || 0));
+                    }
+                    updateVisualState(state);
+                    return;
                 }
 
-                renderLoketBoard(state.loket_calls, state.settings, state.loket);
+                // Find new call_history entries since last poll
+                const newEntries = history
+                    .filter(h => (h.id || 0) > lastSeenHistoryId)
+                    .sort((a, b) => (a.id || 0) - (b.id || 0)); // oldest first
 
-                if (state.announce && state.antrian > 0 && state.loket > 0) {
-                    speakQueue(state.antrian, state.loket, state.settings);
-                }
+                if (newEntries.length > 0) {
+                    // Update the high-water mark
+                    lastSeenHistoryId = Math.max(...history.map(h => h.id || 0));
 
-                if (logList) {
-                    const sortedCalls = state.call_history || [];
-
-                    if (sortedCalls.length > 0) {
-                        logList.innerHTML = sortedCalls.map(call => {
-                            const hasCallAlias = call.alias && call.alias !== `loket-${String(call.loket).padStart(3, '0')}` && call.alias !== `Loket ${call.loket}`;
-                            const destination = `Loket ${call.loket}${hasCallAlias ? ` (${call.alias})` : ''}`;
-
-                            return `<li style="font-size: 0.84rem; color: var(--text); display: flex; justify-content: flex-start; align-items: center; gap: 6px; margin: 0; white-space: nowrap; flex-shrink: 0;">
-                                <i data-lucide="dot" class="text-primary" style="width: 16px; height: 16px; stroke-width: 4px; margin-right: -4px;"></i>
-                                <span>Antrian <strong style="color: var(--accent-strong); font-weight: 800;">${padQueue(call.antrian)}</strong> ke <strong>${destination}</strong></span>
-                            </li>`;
-                        }).join('');
-                        lucide.createIcons();
-                    } else {
-                        logList.innerHTML = '<li><span style="color: var(--muted); font-size: 0.82rem;">Belum ada panggilan</span></li>';
+                    // Queue each new call for sequential announcement
+                    for (const entry of newEntries) {
+                        queueAnnouncement({
+                            antrian: entry.antrian,
+                            loket: entry.loket,
+                            settings: state.settings,
+                            loket_calls: state.loket_calls,
+                            call_history: state.call_history,
+                        });
                     }
                 }
+
+                // If nothing is playing and nothing is queued, update display freely
+                if (announcementQueue.length === 0 && !isAnnouncementPlaying) {
+                    updateVisualState(state);
+                }
+
             } catch (error) {
                 if (logList) {
                     logList.innerHTML = `<li><span style="color: var(--danger);">${error.message}</span></li>`;

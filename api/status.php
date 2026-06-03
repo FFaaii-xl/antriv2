@@ -69,11 +69,12 @@ try {
         ];
     }
 
-    $historyRows = $pdo->query('SELECT loket, antrian, created_at FROM call_history ORDER BY id DESC LIMIT 20')->fetchAll();
+    $historyRows = $pdo->query('SELECT id, loket, antrian, created_at FROM call_history ORDER BY id DESC LIMIT 20')->fetchAll();
     $callHistory = [];
     foreach ($historyRows as $row) {
         $loketNum = (int) $row['loket'];
         $callHistory[] = [
+            'id' => (int) $row['id'],
             'loket' => $loketNum,
             'alias' => $aliases[$loketNum] ?? ('Loket ' . $loketNum),
             'antrian' => (int) $row['antrian'],
