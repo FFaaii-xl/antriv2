@@ -46,6 +46,7 @@ require __DIR__ . '/../auth/helpers.php';
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
+            height: 100px;
         }
         .loket-board-main {
             background: rgba(255, 255, 255, 0.6);
@@ -56,6 +57,7 @@ require __DIR__ . '/../auth/helpers.php';
             width: 100%;
             flex: 1;
             overflow: hidden;
+            min-height: 0;
         }
         .display-stage {
             flex: 1;
@@ -63,6 +65,7 @@ require __DIR__ . '/../auth/helpers.php';
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-height: 0;
         }
         .display-stage-tv {
             flex: 1;
@@ -118,19 +121,19 @@ require __DIR__ . '/../auth/helpers.php';
         </header>
 
         <section class="display-stage display-stage-tv">
-            <section class="panel-card loket-board loket-board-main" style="display: flex; flex-direction: column; padding: 32px; margin: 0 16px 16px 16px;">
-                <div class="loket-board-header" style="margin-bottom: 24px; text-align: center;">
-                    <h2 style="font-weight: 900; font-size: 2rem; letter-spacing: -0.02em; color: var(--text); margin: 0;">Status Antrian Saat Ini</h2>
+            <section class="loket-board loket-board-main" style="display: flex; flex-direction: column; padding: 24px; margin: 0 16px 16px 16px;">
+                <div class="loket-board-header" style="margin-bottom: 16px; text-align: center; flex-shrink: 0;">
+                    <h2 style="font-weight: 900; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--text); margin: 0;">Status Antrian Saat Ini</h2>
                 </div>
-                <div id="loketBoard" class="loket-board-grid" style="flex: 1; margin-bottom: 24px; gap: 24px;"></div>
-                
-                <div style="align-self: center; width: 100%; max-width: 100%; padding: 16px 32px; background: #ffffff; border-radius: 24px; border: 2px solid rgba(124, 58, 237, 0.1); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.08); margin-top: auto; text-align: center;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                        <span class="eyebrow" style="margin: 0; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--accent-strong); font-size: 0.9rem; letter-spacing: 0.15em; font-weight: 800;">
-                            <i data-lucide="megaphone" style="width: 18px; height: 18px;"></i> LIVE LOG PANGGILAN
+                <div id="loketBoard" class="loket-board-grid" style="flex: 1; min-height: 0; margin-bottom: 16px; gap: 16px;"></div>
+
+                <div style="flex-shrink: 0; align-self: center; width: 100%; max-width: 100%; padding: 12px 24px; background: #ffffff; border-radius: 20px; border: 2px solid rgba(124, 58, 237, 0.1); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.08); text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <span class="eyebrow" style="margin: 0; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--accent-strong); font-size: 0.8rem; letter-spacing: 0.15em; font-weight: 800;">
+                            <i data-lucide="megaphone" style="width: 16px; height: 16px;"></i> LIVE LOG PANGGILAN
                         </span>
                         <div id="queueNumber" style="display: none;">000</div>
-                        <ul id="activityLog" class="activity-log-horizontal" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; justify-content: flex-start; gap: 16px; width: 100%; font-size: 1.1rem; font-weight: 600;">
+                        <ul id="activityLog" class="activity-log-horizontal" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: row; flex-wrap: nowrap; overflow: hidden; justify-content: flex-start; gap: 16px; width: 100%; font-size: 1rem; font-weight: 600;">
                             <li><span style="color: var(--muted);">Memuat riwayat...</span></li>
                         </ul>
                     </div>
@@ -308,10 +311,10 @@ require __DIR__ . '/../auth/helpers.php';
 
             const btnReset = document.getElementById('resetPaddingButton');
 
-            let topVal = localStorage.getItem('layar_pad_top') !== null ? parseInt(localStorage.getItem('layar_pad_top')) : 100;
-            let bottomVal = localStorage.getItem('layar_pad_bottom') !== null ? parseInt(localStorage.getItem('layar_pad_bottom')) : 100;
-            let leftVal = localStorage.getItem('layar_pad_left') !== null ? parseInt(localStorage.getItem('layar_pad_left')) : 100;
-            let rightVal = localStorage.getItem('layar_pad_right') !== null ? parseInt(localStorage.getItem('layar_pad_right')) : 100;
+            let topVal = localStorage.getItem('layar_pad_top') !== null ? parseInt(localStorage.getItem('layar_pad_top')) : 24;
+            let bottomVal = localStorage.getItem('layar_pad_bottom') !== null ? parseInt(localStorage.getItem('layar_pad_bottom')) : 24;
+            let leftVal = localStorage.getItem('layar_pad_left') !== null ? parseInt(localStorage.getItem('layar_pad_left')) : 24;
+            let rightVal = localStorage.getItem('layar_pad_right') !== null ? parseInt(localStorage.getItem('layar_pad_right')) : 24;
 
             function applyPadding() {
                 body.style.setProperty('padding-top', topVal + 'px', 'important');
@@ -353,10 +356,10 @@ require __DIR__ . '/../auth/helpers.php';
             });
 
             btnReset.addEventListener('click', () => {
-                topVal = 100;
-                bottomVal = 100;
-                leftVal = 100;
-                rightVal = 100;
+                topVal = 24;
+                bottomVal = 24;
+                leftVal = 24;
+                rightVal = 24;
                 applyPadding();
             });
 

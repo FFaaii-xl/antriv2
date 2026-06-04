@@ -50,11 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentQueue = 0;
             }
 
-            antrian_save_uploaded_announcement_audio($_FILES['intro_audio'] ?? [], 'intro.mp3');
-            antrian_save_uploaded_announcement_audio($_FILES['outro_audio'] ?? [], 'outro.mp3');
             antrian_update_queue_start((int) $queueStart);
             antrian_update_state_values((int) $currentQueue, null, 0);
-            $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'File intro, outro, dan nomor antrian berhasil disimpan.'];
+            $_SESSION['admin_notice'] = ['type' => 'success', 'message' => 'Nomor antrian berhasil disimpan.'];
         }
 
         if ($action === 'update_user') {
@@ -461,21 +459,6 @@ unset($_SESSION['admin_notice']);
 
             <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
                 <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="volume-2" class="text-primary" style="width: 18px; height: 18px;"></i> Paket Suara Aktif
-                </h2>
-                <p style="margin: 0; font-size: 0.92rem; color: var(--text); font-weight: 700;">
-                    <?= htmlspecialchars((string) $settings['voice_pack_label'], ENT_QUOTES, 'UTF-8') ?>
-                </p>
-                <p style="margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.45;">
-                    Folder: <code style="font-size: 0.78rem;">audio/<?= htmlspecialchars((string) $settings['voice_pack'], ENT_QUOTES, 'UTF-8') ?>/</code>
-                </p>
-                <button class="button button-ghost" type="button" id="openVoiceBtnSidebar" style="width: 100%; border-radius: 12px; padding: 12px;">
-                    <i data-lucide="mic" style="width: 16px; height: 16px;"></i> Ganti Suara
-                </button>
-            </div>
-
-            <div class="panel-card-premium" style="gap: 16px; padding: 20px;">
-                <h2 style="font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="info" class="text-primary" style="width: 18px; height: 18px;"></i> Tentang Aplikasi
                 </h2>
                 <div class="d-flex flex-wrap gap-2">
@@ -648,23 +631,7 @@ unset($_SESSION['admin_notice']);
                 <input type="hidden" name="action" value="update_settings">
                 <input type="hidden" name="return_search" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>">
                 <?= antrian_csrf_hidden_input() ?>
-                
-                <label class="settings-field settings-field-full" style="margin-bottom: 16px;">
-                    <span style="font-weight: 600;">Intro panggilan (MP3)</span>
-                    <input type="file" name="intro_audio" accept="audio/mpeg,audio/mp3,.mp3" style="margin-top: 8px;">
-                    <small class="settings-hint" style="display: block; margin-top: 4px;">
-                        <?= $settings['intro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['intro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file intro yang diupload.' ?>
-                    </small>
-                </label>
-                
-                <label class="settings-field settings-field-full" style="margin-bottom: 16px;">
-                    <span style="font-weight: 600;">Outro panggilan (MP3)</span>
-                    <input type="file" name="outro_audio" accept="audio/mpeg,audio/mp3,.mp3" style="margin-top: 8px;">
-                    <small class="settings-hint" style="display: block; margin-top: 4px;">
-                        <?= $settings['outro_audio_exists'] ? 'File aktif: ' . htmlspecialchars((string) $settings['outro_audio_url'], ENT_QUOTES, 'UTF-8') : 'Belum ada file outro yang diupload.' ?>
-                    </small>
-                </label>
-                
+
                 <div style="display: flex; gap: 16px; margin-bottom: 24px;">
                     <label class="settings-field" style="flex: 1;">
                         <span style="font-weight: 600;">Nomor mulai antrian</span>
@@ -675,7 +642,7 @@ unset($_SESSION['admin_notice']);
                         <input type="number" name="current_queue" min="0" value="<?= (int) $state['antrian'] ?>" style="width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid rgba(15,23,42,0.1);">
                     </label>
                 </div>
-                
+
                 <div class="settings-actions">
                     <button class="button button-primary" type="submit" style="width: 100%; padding: 14px; border-radius: 12px; font-size: 1rem;">Simpan Pengaturan</button>
                 </div>
@@ -768,7 +735,6 @@ unset($_SESSION['admin_notice']);
         });
 
         openVoiceBtn.addEventListener('click', openVoiceModal);
-        openVoiceBtnSidebar.addEventListener('click', openVoiceModal);
 
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('active');
