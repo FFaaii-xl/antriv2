@@ -5,11 +5,6 @@
         return String(value ?? 0).padStart(3, '0');
     }
 
-    function wait(milliseconds) {
-        return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-    }
-
-
     async function fetchJson(url, options = {}) {
         const csrfToken = body.dataset.csrfToken || '';
         const headers = {
@@ -91,43 +86,6 @@
                 activeAudioElement.currentTime = 0;
                 activeAudioElement = null;
             }
-
-            // Stop any ongoing audio
-            if (activeAudioElement) {
-                activeAudioElement.pause();
-                activeAudioElement.currentTime = 0;
-                activeAudioElement = null;
-            }
-        }
-
-        function numberToWords(value) {
-            const number = Math.max(0, parseInt(value, 10) || 0);
-            
-            if (number === 0) return 'nol';
-            if (number < 10) return ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'][number];
-            if (number === 10) return 'sepuluh';
-            if (number === 11) return 'sebelas';
-            if (number < 20) return numberToWords(number - 10) + ' belas';
-            if (number < 100) {
-                const tens = Math.floor(number / 10);
-                const remainder = number % 10;
-                if (remainder === 0) return ['', '', 'dua puluh', 'tiga puluh', 'empat puluh', 'lima puluh', 'enam puluh', 'tujuh puluh', 'delapan puluh', 'sembilan puluh'][tens];
-                return ['', '', 'dua puluh', 'tiga puluh', 'empat puluh', 'lima puluh', 'enam puluh', 'tujuh puluh', 'delapan puluh', 'sembilan puluh'][tens] + ' ' + numberToWords(remainder);
-            }
-            if (number === 100) return 'seratus';
-            if (number < 200) return 'seratus ' + numberToWords(number - 100);
-            if (number < 1000) {
-                const hundreds = Math.floor(number / 100);
-                const remainder = number % 100;
-                if (remainder === 0) return numberToWords(hundreds) + ' ratus';
-                return numberToWords(hundreds) + ' ratus ' + numberToWords(remainder);
-            }
-            if (number === 1000) return 'seribu';
-            if (number < 2000) return 'seribu ' + numberToWords(number - 1000);
-            const thousands = Math.floor(number / 1000);
-            const remainder = number % 1000;
-            if (remainder === 0) return numberToWords(thousands) + ' ribu';
-            return numberToWords(thousands) + ' ribu ' + numberToWords(remainder);
         }
 
         function audioPath(fileName, settings = null) {
@@ -187,7 +145,7 @@
             if (number < 10) {
                 return [`${number}.MP3`];
             }
-        
+            
             if (number === 10) {
                 return ['sepuluh.MP3'];
             }

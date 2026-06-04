@@ -151,3 +151,10 @@ When moving to another computer:
 4. `api/status.php` — what data is available
 5. `assets/js/main.js` — how data drives UI
 6. `views/layar.php` — display template
+
+## Recent Changes
+
+- **Code cleanup** (2026-06-04): Removed dead code from `assets/js/main.js`:
+  - `wait()` function (unused)
+  - `numberToWords()` function (reserved for future TTS, system uses audio MP3 files)
+  - Duplicate code block in `stopActiveAnnouncement()`

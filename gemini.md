@@ -231,6 +231,7 @@ Layar memutar dari `{baseUrl}/audio/{voice_pack}/...`; intro kustom tetap `audio
 9. **Subfolder** — `data-base-url` untuk audio dan API di JS.
 10. **Operasional saat ini** — Beranda = admin; menu landing tidak di-route; vendor & audio lokal wajib; skrip `scripts/setup-assets.ps1` untuk cek deploy.
 11. **Paket suara** — `audio/default`, `audio/ardi`, `audio/gadis`; pilihan di Admin → Ganti Suara; kolom `app_settings.voice_pack`.
+12. **Code cleanup** — Hapus dead code di `assets/js/main.js`: fungsi `wait()` tidak terpakai, fungsi `numberToWords()` cadangan TTS (sistem pakai audio MP3), duplicate block di `stopActiveAnnouncement()`.
 
 ---
 
